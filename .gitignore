@@ -6,3 +6,9 @@ artifacts/
 *.log
 .refs/
 .npm-cache/
+.playwright-cli/
+.playwright-mcp/
+.test-artifacts/
+output/
+
+.claude/
