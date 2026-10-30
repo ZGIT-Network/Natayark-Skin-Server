@@ -1,0 +1,111 @@
+<%- include('../partials/layout-user-top', { title: texture.name, pageDescription: '材质详情与应用。' }) %>
+
+<div class="grid gap-5 lg:grid-cols-2">
+  <section class="card">
+    <%- include('../partials/previewer', { skinUrl: texture.type === 'cape' ? '' : '/textures/' + texture.hash, capeUrl: texture.type === 'cape' ? '/textures/' + texture.hash : '', previewModel: texture.type === 'alex' ? 'slim' : 'default', flatSkin: texture.type === 'cape' ? '' : '/preview/' + texture.tid + '?v=4&png&model=' + texture.type, flatCape: texture.type === 'cape' ? '/preview/' + texture.tid + '?v=4&png' : '' }) %>
+    <div class="border-t border-border px-4 py-2.5">
+      <code class="block truncate text-[0.7rem] text-muted-foreground"><%= texture.hash %></code>
+    </div>
+  </section>
+
+  <section class="space-y-5">
+    <div class="card">
+      <div class="card-header">
+        <div class="min-w-0">
+          <h2 class="card-title"><%= texture.name %></h2>
+          <p class="card-description">
+            上传者 <%= texture.nickname || ('UID ' + texture.uploader) %> · <%= texture.upload_at %>
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span class="badge badge-secondary"><%= texture.type === 'cape' ? '披风' : (texture.type === 'alex' ? 'Alex' : 'Steve') %></span>
+          <% if (!texture.public) { %><span class="badge badge-warning">私有</span><% } %>
+          <span class="badge badge-outline">收藏 <%= texture.likes %></span>
+        </div>
+      </div>
+      <div class="card-content">
+        <% if (user) { %>
+        <div class="flex flex-wrap gap-2">
+          <% if (!inCloset) { %>
+          <button type="button" class="btn btn-primary" data-action="add-closet" data-tid="<%= texture.tid %>"><%- icon('star') %>收藏到衣柜</button>
+          <% } else { %>
+          <a class="btn btn-outline" href="/user/closet">已在衣柜中</a>
+          <% } %>
+          <button type="button" class="btn btn-outline" data-dialog-open="dialog-report"><%- icon('flag') %>举报</button>
+          <% if (isOwner || isAdmin) { %>
+          <button type="button" class="btn btn-outline" data-action="rename-texture" data-tid="<%= texture.tid %>" data-name="<%= texture.name %>"><%- icon('pencil') %>重命名</button>
+          <button type="button" class="btn btn-outline" data-action="toggle-privacy" data-tid="<%= texture.tid %>" data-public="<%= texture.public ? '1' : '0' %>"><%- icon('eye') %><%= texture.public ? '设为私有' : '设为公开' %></button>
+          <button type="button" class="btn btn-ghost text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="delete-texture" data-tid="<%= texture.tid %>"><%- icon('trash-2') %>删除</button>
+          <% } %>
+        </div>
+        <% } %>
+        <% if (allowDownload) { %><a class="btn btn-outline mt-3" href="/raw/<%= texture.tid %>" download="<%= texture.name %>.png"><%- icon('download') %>下载材质</a><% } %>
+        <% if ((isOwner || isAdmin) && texture.type !== 'cape') { %>
+        <form data-action="texture-model" data-tid="<%= texture.tid %>" class="mt-4 flex items-end gap-2">
+          <label class="field flex-1"><span class="label">皮肤模型</span><span class="select-wrap"><select class="select" name="type"><option value="steve" <%= texture.type === 'steve' ? 'selected' : '' %>>Steve（经典）</option><option value="alex" <%= texture.type === 'alex' ? 'selected' : '' %>>Alex（纤细）</option></select></span></label>
+          <button type="submit" class="btn btn-outline">修改模型</button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (user) { %>
+    <div class="card">
+      <div class="card-header"><div><h2 class="card-title">应用到角色</h2><p class="card-description">选择要应用此材质的角色。</p></div></div>
+      <div class="card-content">
+        <% if (applyPlayers.length === 0) { %>
+        <p class="text-sm text-muted-foreground">你还没有角色，<a href="/user/player" class="font-medium text-brand-strong hover:underline dark:text-brand">去创建</a>。</p>
+        <% } else { %>
+        <% if (!inCloset && !isAdmin) { %>
+        <p class="mb-3 text-sm text-muted-foreground">请先点击「收藏到衣柜」，再选择角色应用。</p>
+        <% } %>
+        <div class="flex flex-wrap gap-2">
+          <% for (const p of applyPlayers) { %>
+          <button type="button" class="btn btn-outline btn-sm" data-action="apply-texture" data-pid="<%= p.pid %>" data-player-name="<%= p.name %>" data-tid="<%= texture.tid %>" data-type="<%= texture.type === 'cape' ? 'cape' : 'skin' %>" <%= p.applied || (!inCloset && !isAdmin) ? 'disabled' : '' %>><%- icon('shirt') %><%= p.name %><%= p.applied ? ' · 已应用' : '' %></button>
+          <% } %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+
+    <div class="card">
+      <div class="card-header"><div><h2 class="card-title">描述</h2></div></div>
+      <div class="card-content">
+        <p id="texture-description" class="whitespace-pre-line text-sm leading-relaxed text-muted-foreground"><%= description || '暂无描述' %></p>
+        <% if (isOwner || isAdmin) { %>
+        <form data-action="save-description" data-tid="<%= texture.tid %>" class="mt-4 flex gap-1.5">
+          <input class="input" name="description" value="<%= description %>" maxlength="255" placeholder="添加描述…">
+          <button class="btn btn-outline" type="submit">保存</button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+  </section>
+</div>
+
+<% if (user) { %>
+<dialog class="dialog" id="dialog-report">
+  <div class="dialog-header">
+    <h2 class="dialog-title">举报材质</h2>
+    <p class="dialog-description">请说明举报理由，管理员会尽快处理。</p>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+  </div>
+  <form data-action="submit-report" data-tid="<%= texture.tid %>">
+    <div class="dialog-body">
+      <label class="field">
+        <span class="label">理由</span>
+        <textarea class="textarea" name="reason" rows="4" required maxlength="1000" placeholder="侵犯版权、违规内容等"></textarea>
+      </label>
+      <p class="mt-2 hidden text-sm text-destructive" data-form-error></p>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-outline" data-dialog-close><%= t('common.cancel') %></button>
+      <button class="btn btn-destructive" type="submit"><%= t('skinlib.report') %></button>
+    </div>
+  </form>
+</dialog>
+<% } %>
+
+<script src="/vendor/skinview3d.js" defer></script>
+<%- include('../partials/layout-bottom') %>

@@ -1,0 +1,136 @@
+<%- include('../partials/layout-user-top', { title: t('general.player-manage'), pageDescription: '每个角色可以独立设置皮肤、披风与模型。' }) %>
+
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-muted-foreground">共 <%= players.length %> 个角色</p>
+  <button type="button" class="btn btn-primary" data-dialog-open="dialog-add">
+    <%- icon('plus') %><%= t('player.add') %>
+  </button>
+</div>
+
+<% if (players.length === 0) { %>
+<div class="card">
+  <div class="empty-state">
+    
+    <div class="empty-state-title"><%= t('user.no-players') %></div>
+    <div class="empty-state-text">添加角色消耗 <%= scorePerPlayer %> 积分。</div>
+    <button type="button" class="btn btn-primary btn-sm" data-dialog-open="dialog-add"><%- icon('plus') %><%= t('player.add') %></button>
+  </div>
+</div>
+<% } else { %>
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  <% for (const p of players) { %>
+  <article class="card overflow-hidden" data-player="<%= p.pid %>">
+    <div class="texture-preview min-h-48 p-4">
+      <% if (p.skinHash) { %>
+      <img src="/preview/<%= p.skinTid %>?v=4&model=<%= p.model %>&size=200" alt="<%= p.name %>" loading="lazy">
+      <% } else { %>
+      <img src="/avatar/player/<%= encodeURIComponent(p.name) %>?size=112" alt="" width="112" height="112" class="rounded-md">
+      <% } %>
+    </div>
+    <div class="border-t border-border p-4">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <h2 class="truncate text-sm font-semibold"><%= p.name %></h2>
+          <div class="mt-1 text-xs text-muted-foreground"><%- include('../partials/private-uuid', {uuidValue:p.uuid,uuidUrl:'/user/privacy/uuid?player='+p.pid}) %></div>
+        </div>
+        <span class="badge badge-outline"><%= p.model === 'slim' ? 'Alex' : 'Steve' %></span>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+        <span class="badge badge-secondary">皮肤 <%= p.skinTid ? '#' + p.skinTid : '未设置' %></span>
+        <span class="badge badge-secondary">披风 <%= p.capeTid ? '#' + p.capeTid : '未设置' %></span>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-1.5">
+        <button type="button" class="btn btn-outline btn-sm" data-dialog-open="dialog-set-<%= p.pid %>">设置材质</button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="rename-player" data-pid="<%= p.pid %>" data-name="<%= p.name %>"><%- icon('pencil') %>改名</button>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm mt-1.5 w-full text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="delete-player" data-pid="<%= p.pid %>" data-name="<%= p.name %>">
+        <%- icon('trash-2') %>删除角色
+      </button>
+    </div>
+  </article>
+  <% } %>
+</div>
+<% } %>
+
+<% for (const p of players) { %>
+<dialog class="dialog dialog-wide" id="dialog-set-<%= p.pid %>">
+  <div class="dialog-header">
+    <h2 class="dialog-title">为 <%= p.name %> 设置材质</h2>
+    <p class="dialog-description">从你的衣柜中选择皮肤或披风。</p>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+  </div>
+  <div class="dialog-body space-y-6">
+    <%- include('../partials/previewer', { skinUrl: p.skinHash ? '/textures/' + p.skinHash : '', capeUrl: p.capeHash ? '/textures/' + p.capeHash : '', previewModel: p.model, flatSkin: p.skinTid ? '/preview/' + p.skinTid + '?v=4&png' : '/preview/default?v=4&png', flatCape: p.capeTid ? '/preview/' + p.capeTid + '?v=4&png' : '' }) %>
+    <section>
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-semibold">皮肤</h3>
+          <p class="mt-0.5 text-xs text-muted-foreground">当前：<%= p.skinTid ? '#' + p.skinTid : '未设置' %></p>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" data-action="clear-texture" data-pid="<%= p.pid %>" data-type="skin">清除</button>
+      </div>
+      <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+        <% const skinItems = closet.filter(c => c.type !== 'cape'); %>
+        <% for (const item of skinItems) { %>
+        <button type="button" class="overflow-hidden rounded-lg border border-border bg-background p-1.5 text-left transition-colors hover:border-brand/50" data-action="use-texture" data-pid="<%= p.pid %>" data-type="skin" data-tid="<%= item.tid %>"><%- icon('shirt') %>
+          <img src="/preview/<%= item.tid %>?v=4&model=<%= item.type %>&size=120" alt="" class="mx-auto h-20 w-auto" loading="lazy">
+          <span class="mt-1 block truncate text-center text-[0.7rem] text-muted-foreground"><%= item.item_name %></span>
+        </button>
+        <% } %>
+        <% if (skinItems.length === 0) { %>
+        <p class="col-span-full rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+          衣柜中没有皮肤，<a href="/skinlib" class="text-brand-strong hover:underline dark:text-brand">去皮肤库挑选</a>。
+        </p>
+        <% } %>
+      </div>
+    </section>
+
+    <section>
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-semibold">披风</h3>
+          <p class="mt-0.5 text-xs text-muted-foreground">当前：<%= p.capeTid ? '#' + p.capeTid : '未设置' %></p>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" data-action="clear-texture" data-pid="<%= p.pid %>" data-type="cape">清除</button>
+      </div>
+      <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+        <% const capeItems = closet.filter(c => c.type === 'cape'); %>
+        <% for (const item of capeItems) { %>
+        <button type="button" class="overflow-hidden rounded-lg border border-border bg-background p-1.5 text-left transition-colors hover:border-brand/50" data-action="use-texture" data-pid="<%= p.pid %>" data-type="cape" data-tid="<%= item.tid %>"><%- icon('shirt') %>
+          <img src="/preview/<%= item.tid %>?v=4&model=<%= item.type %>&size=120" alt="" class="mx-auto h-20 w-auto" loading="lazy">
+          <span class="mt-1 block truncate text-center text-[0.7rem] text-muted-foreground"><%= item.item_name %></span>
+        </button>
+        <% } %>
+        <% if (capeItems.length === 0) { %>
+        <p class="col-span-full rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">衣柜中没有披风。</p>
+        <% } %>
+      </div>
+    </section>
+  </div>
+</dialog>
+<% } %>
+
+<dialog class="dialog" id="dialog-add">
+  <div class="dialog-header">
+    <h2 class="dialog-title"><%= t('player.add') %></h2>
+    <p class="dialog-description">将消耗 <%= scorePerPlayer %> 积分。</p>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+  </div>
+  <form data-action="add-player">
+    <div class="dialog-body">
+      <label class="field">
+        <span class="label"><%= t('player.name') %></span>
+        <input class="input" id="new-player-name" name="name" required minlength="3" maxlength="16" autofocus>
+        <span class="field-hint">名称须符合本站命名规则。</span>
+      </label>
+      <p class="mt-2 hidden text-sm text-destructive" data-form-error></p>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-outline" data-dialog-close><%= t('common.cancel') %></button>
+      <button class="btn btn-primary" type="submit"><%= t('player.add') %></button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/vendor/skinview3d.js" defer></script>
+<%- include('../partials/layout-bottom') %>

@@ -1,0 +1,94 @@
+<%- include('../partials/layout-user-top', { title: t('skinlib.upload'), pageDescription: '上传 PNG 皮肤或披风，支持高清材质。' }) %>
+
+<div class="grid gap-5 lg:grid-cols-3">
+  <section class="card lg:col-span-2">
+    <div class="card-content">
+      <form id="upload-form" class="grid gap-5" data-public-storage="<%= scorePerStorage %>" data-private-storage="<%= privateScorePerStorage %>" data-closet-cost="<%= closetItemCost %>" data-upload-award="<%= award %>" data-score="<%= user.score %>">
+        <label class="field">
+          <span class="label">材质文件</span>
+          <span class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center transition-colors hover:border-brand/50">
+            <span class="text-sm font-medium">选择 PNG 文件</span>
+            <span id="file-name" class="text-xs text-muted-foreground">未选择文件</span>
+            <input type="file" id="file" name="file" accept="image/png" required class="sr-only" data-file-input data-file-name="#file-name" data-file-preview="#file-preview" data-file-preview-panel="#file-preview-panel">
+          </span>
+          <span class="field-hint">皮肤 64×32 / 64×64 / 高清；披风宽高比 2:1；最大 <%= maxFileSize %> KB。</span>
+        </label>
+
+        <div id="file-preview-panel" class="flex justify-center rounded-xl border border-border bg-muted/30 p-4" hidden>
+          <img id="file-preview" alt="所选材质预览" class="max-h-40 w-auto" style="image-rendering: pixelated" hidden>
+        </div>
+
+        <label class="field">
+          <span class="label"><%= t('skinlib.name') %></span>
+          <input class="input" id="name" name="name" required maxlength="50">
+        </label>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="field">
+            <span class="label"><%= t('skinlib.type') %></span>
+            <span class="select-wrap">
+              <select class="select" id="type" name="type">
+                <option value="skin"><%= t('skinlib.type-skin') %></option>
+                <option value="cape"><%= t('skinlib.type-cape') %></option>
+              </select>
+            </span>
+          </label>
+          <label class="field">
+            <span class="label"><%= t('skinlib.model') %></span>
+            <span class="select-wrap">
+              <select class="select" id="model" name="model">
+                <option value="default"><%= t('player.model-default') %></option>
+                <option value="slim"><%= t('player.model-slim') %></option>
+              </select>
+            </span>
+            <span class="field-hint">仅对皮肤有效；纤细模型必须为正方形。</span>
+          </label>
+        </div>
+
+        <fieldset>
+          <legend class="label mb-2"><%= t('skinlib.visibility') %></legend>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="radio-row rounded-lg border border-border p-3 hover:bg-accent">
+              <input type="radio" class="radio" name="public" value="1" checked>
+              <span>
+                <span class="block text-sm font-medium"><%= t('skinlib.public') %></span>
+                <span class="block text-xs text-muted-foreground"><%= scorePerStorage %> 积分 / KB · 奖励 <%= award %> 积分</span>
+              </span>
+            </label>
+            <label class="radio-row rounded-lg border border-border p-3 hover:bg-accent">
+              <input type="radio" class="radio" name="public" value="0">
+              <span>
+                <span class="block text-sm font-medium"><%= t('skinlib.private') %></span>
+                <span class="block text-xs text-muted-foreground"><%= privateScorePerStorage %> 积分 / KB · 奖励 <%= award %> 积分</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <p class="text-sm text-muted-foreground" id="upload-estimate" role="status" aria-live="polite" hidden></p>
+        <p class="hidden text-sm text-destructive" id="upload-error" role="alert"></p>
+        <button class="btn btn-primary btn-lg" type="submit"><%= t('skinlib.upload-btn') %></button>
+      </form>
+    </div>
+  </section>
+
+  <aside class="space-y-5">
+  <div class="card" data-upload-viewer>
+    <%- include('../partials/previewer', { skinUrl: '', capeUrl: '', previewModel: 'default', flatSkin: '', flatCape: '' }) %>
+  </div>
+  <div class="card">
+    <div class="card-header"><div><h2 class="card-title">费用说明</h2></div></div>
+    <div class="card-content space-y-2 text-sm">
+      <div class="flex items-center justify-between"><span class="text-muted-foreground">公开材质</span><span><%= scorePerStorage %> 积分 / KB</span></div>
+      <div class="flex items-center justify-between"><span class="text-muted-foreground">私有材质</span><span><%= privateScorePerStorage %> 积分 / KB</span></div>
+      <div class="flex items-center justify-between"><span class="text-muted-foreground">上传奖励（公开 / 私有）</span><span><%= award %> 积分</span></div>
+      <div class="flex items-center justify-between"><span class="text-muted-foreground">加入衣柜</span><span><%= closetItemCost %> 积分 / 件</span></div>
+      <p class="text-xs leading-relaxed text-muted-foreground">存储费用按文件大小向上取整至 KB，加上衣柜费用，再扣除上传奖励。上传成功后自动加入衣柜。</p>
+      <div class="border-t border-border pt-2 text-xs text-muted-foreground">当前积分：<strong class="text-foreground"><%= user.score %></strong></div>
+    </div>
+  </div>
+  </aside>
+</div>
+
+<script src="/vendor/skinview3d.js" defer></script>
+<%- include('../partials/layout-bottom') %>

@@ -1,0 +1,27 @@
+<%
+  if (typeof t !== 'function') locals.t = function (key) { return key; };
+  const __path = typeof currentPath !== 'undefined' ? currentPath : '/';
+%>
+<header class="topbar">
+  <button type="button" class="btn btn-ghost btn-icon btn-sm lg:hidden" data-sidebar-toggle aria-label="打开菜单">
+    <%- icon('menu') %>
+  </button>
+  <a href="/" class="flex items-center gap-2 lg:hidden">
+    <span class="site-wordmark"><%= typeof siteName !== 'undefined' ? siteName : '' %></span>
+  </a>
+
+  <div class="ml-auto flex items-center gap-1">
+    <%- include('theme-menu') %>
+
+    <%- include('languages') %>
+
+    <% if (typeof user !== 'undefined' && user) { %>
+    <%- include('user-menu') %>
+    <% } else { %>
+    <a href="/auth/login" class="btn btn-ghost btn-sm"><span class="hidden sm:inline"><%= t('general.login') %></span></a>
+    <% if (typeof localLoginEnabled === 'undefined' || localLoginEnabled) { %>
+    <a href="/auth/register" class="btn btn-primary btn-sm"><%= t('general.register') %></a>
+    <% } %>
+    <% } %>
+  </div>
+</header>

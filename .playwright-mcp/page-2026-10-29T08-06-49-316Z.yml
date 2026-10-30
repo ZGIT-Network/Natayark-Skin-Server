@@ -1,0 +1,23 @@
+- generic [ref=f24e2]:
+  - link "Natayark Skin" [ref=f24e4] [cursor=pointer]:
+    - /url: /
+  - generic [ref=f24e6]:
+    - generic [ref=f24e7]:
+      - textbox "邮箱" [active] [ref=f24e9]
+      - textbox "密码" [ref=f24e11]
+      - generic [ref=f24e13]:
+        - checkbox "记住登录" [ref=f24e14]
+        - generic [ref=f24e15]: 记住登录
+      - button "登录" [ref=f24e16] [cursor=pointer]
+    - generic [ref=f24e17]:
+      - paragraph [ref=f24e18]: "- 或 -"
+      - link " 使用以下方式继续 Natayark ID" [ref=f24e19] [cursor=pointer]:
+        - /url: /auth/login/natayarkid?redirect=%2Fuser
+        - generic [ref=f24e20]: 
+        - text: 使用以下方式继续 Natayark ID
+    - paragraph [ref=f24e21]:
+      - link "找回密码" [ref=f24e22] [cursor=pointer]:
+        - /url: /auth/forgot
+    - paragraph [ref=f24e23]:
+      - link "还没有账户?注册" [ref=f24e24] [cursor=pointer]:
+        - /url: /auth/register

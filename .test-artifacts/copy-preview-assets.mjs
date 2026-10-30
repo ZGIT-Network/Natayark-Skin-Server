@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root = 'D:/Projects/mcnskinl/oldbf/public/app';
+const source = fs.readFileSync(path.join(root, '997.b99f3d5.js'), 'utf8');
+const skin = /data:image\/png;base64,([A-Za-z0-9+/=]+)/.exec(source)?.[1];
+if (!skin) throw new Error('Legacy preview default skin not found');
+fs.mkdirSync('public/app/preview-backgrounds', { recursive:true });
+fs.writeFileSync('public/app/default-skin.png', Buffer.from(skin,'base64'));
+const files = ['864a68e8a8adc85a8f5c.webp','7c013d148e38c3c93778.webp','2bcf685251dfe81e4b78.webp','0a40452f370b1aa92bf0.webp','73fd567289fe5a9c1b6c.webp','5f0b07bf1518ad8e86ed.webp','b8e05e3c8cdcf432089f.webp'];
+files.forEach((file,index)=>fs.copyFileSync(path.join(root,file),`public/app/preview-backgrounds/${index+1}.webp`));
+console.log('Copied the legacy default skin and all 7 preview backgrounds');

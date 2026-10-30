@@ -1,0 +1,60 @@
+- generic [active] [ref=e1]:
+  - link "跳至主要内容" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "Natayark Skin SKIN & IDENTITY" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]:
+          - text: Natayark Skin
+          - generic [ref=e8]: SKIN & IDENTITY
+      - navigation "主导航" [ref=e9]:
+        - link "皮肤库" [ref=e10] [cursor=pointer]:
+          - /url: /skinlib
+        - link "客户端配置" [ref=e11] [cursor=pointer]:
+          - /url: /user/config
+      - generic [ref=e12]:
+        - link "登录" [ref=e13] [cursor=pointer]:
+          - /url: /auth/login
+        - link "注册" [ref=e14] [cursor=pointer]:
+          - /url: /auth/register
+  - main [ref=e15]:
+    - generic [ref=e16]:
+      - heading "登录" [level=1] [ref=e17]
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: 邮箱
+          - textbox "邮箱" [ref=e21]
+        - generic [ref=e22]:
+          - generic [ref=e23]: 密码
+          - textbox "密码" [ref=e24]
+        - button "登录" [ref=e25] [cursor=pointer]
+      - generic [ref=e26]: 或
+      - generic [ref=e29]:
+        - link "使用 E2E Test 登录" [ref=e30] [cursor=pointer]:
+          - /url: /auth/login/e2etest?redirect=%2Fuser
+        - link "使用 Natayark ID 登录" [ref=e31] [cursor=pointer]:
+          - /url: /auth/login/natayarkid?redirect=%2Fuser
+      - generic [ref=e32]:
+        - link "忘记密码" [ref=e33] [cursor=pointer]:
+          - /url: /auth/forgot
+        - link "没有账户?注册" [ref=e34] [cursor=pointer]:
+          - /url: /auth/register
+  - contentinfo [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e37]: Natayark Skin
+      - generic [ref=e38]:
+        - link "津ICP备2025038348号" [ref=e39] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+        - text: "| Powered by Natayark Network"
+        - generic [ref=e40]:
+          - text: © 2024-2026
+          - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=e41] [cursor=pointer]:
+            - /url: //www.zyghit.cn
+          - text: .
+        - text: All rights reserved.
+      - generic [ref=e42]:
+        - link "Yggdrasil API" [ref=e43] [cursor=pointer]:
+          - /url: /api/yggdrasil
+        - link "客户端配置" [ref=e44] [cursor=pointer]:
+          - /url: /user/config

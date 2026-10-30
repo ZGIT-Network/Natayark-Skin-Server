@@ -1,0 +1,25 @@
+<%
+  if (typeof t !== 'function') locals.t = function (key) { return key; };
+  const __authTitle = typeof authTitle !== 'undefined' ? authTitle : (typeof title !== 'undefined' ? title : '');
+  const __authSubtitle = typeof authSubtitle !== 'undefined' ? authSubtitle : '';
+  const __lang = typeof htmlLang !== 'undefined' ? htmlLang : 'zh-CN';
+  const __dark = typeof darkMode !== 'undefined' && darkMode;
+%>
+<!DOCTYPE html>
+<html lang="<%= __lang %>" class="<%= __dark ? 'dark' : '' %>">
+<head>
+  <%- include('head') %>
+</head>
+<body class="auth-page">
+  <div class="auth-card" data-page-content>
+    <div class="auth-brand">
+      <a href="/" class="auth-brand-name"><%= typeof siteName !== 'undefined' ? siteName : 'Natayark SkinServer' %></a>
+      <%- include('theme-menu') %>
+    </div>
+
+    <div class="card">
+      <div class="card-content p-6">
+        <div class="mb-6">
+          <h1 class="auth-title"><%= __authTitle %></h1>
+          <% if (__authSubtitle) { %><p class="auth-subtitle"><%= __authSubtitle %></p><% } %>
+        </div>

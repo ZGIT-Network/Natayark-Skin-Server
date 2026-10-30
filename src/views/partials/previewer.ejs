@@ -1,0 +1,30 @@
+<section class="skin-viewer" data-skin-viewer data-loading="true" data-skin-url="<%= skinUrl || '' %>" data-cape-url="<%= capeUrl || '' %>" data-model="<%= previewModel || 'default' %>" data-flat-skin="<%= flatSkin || '' %>" data-flat-cape="<%= flatCape || '' %>">
+  <div class="viewer-toolbar">
+    <strong>材质预览</strong>
+    <div class="viewer-controls">
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-viewer-action="run" aria-label="切换行走与奔跑" title="行走 / 奔跑" aria-pressed="false"><%- icon('run') %></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-viewer-action="rotate" aria-label="自动旋转" title="自动旋转" aria-pressed="true"><%- icon('refresh-cw') %></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-viewer-action="pause" aria-label="暂停动画" title="播放 / 暂停" aria-pressed="false"><span data-viewer-pause-icon><%- icon('pause') %></span><span data-viewer-play-icon hidden><%- icon('play') %></span></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-viewer-action="reset" aria-label="重置预览" title="重置预览"><%- icon('stop') %></button>
+    </div>
+  </div>
+  <div class="viewer-stage">
+    <div class="viewer-loading" aria-hidden="true"><span class="skeleton-surface"></span></div>
+    <div class="viewer-viewport" data-viewer-viewport></div>
+    <div class="viewer-flat" data-viewer-flat hidden><img data-viewer-flat-skin alt="皮肤平面预览" hidden><img data-viewer-flat-cape alt="披风平面预览" hidden></div>
+    <p class="viewer-status" data-viewer-status role="status">正在加载预览…</p>
+  </div>
+  <div class="viewer-footer">
+    <div class="viewer-backgrounds" aria-label="预览背景">
+      <button type="button" class="viewer-swatch viewer-swatch-auto" data-viewer-background="auto" aria-label="跟随站点背景" title="自动背景" aria-pressed="true"></button>
+      <button type="button" class="viewer-swatch" style="background:#ffffff" data-viewer-background="#ffffff" aria-label="白色背景" title="白色"></button>
+      <button type="button" class="viewer-swatch" style="background:#000000" data-viewer-background="#000000" aria-label="黑色背景" title="黑色"></button>
+      <button type="button" class="viewer-swatch" style="background:#6c757d" data-viewer-background="#6c757d" aria-label="灰色背景" title="灰色"></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-xs" data-viewer-action="previous-background" aria-label="上一个场景"><%- icon('chevron-left') %></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-xs" data-viewer-action="next-background" aria-label="下一个场景"><%- icon('chevron-right') %></button>
+      <output class="viewer-scene-label" data-viewer-scene></output>
+    </div>
+    <div class="viewer-mode"><button type="button" class="btn btn-outline btn-xs" data-viewer-mode="3d" aria-pressed="true">3D</button><button type="button" class="btn btn-outline btn-xs" data-viewer-mode="2d" aria-pressed="false">2D</button></div>
+  </div>
+  <p class="viewer-hint">拖动旋转，滚轮或双指缩放</p>
+</section>

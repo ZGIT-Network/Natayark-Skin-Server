@@ -1,0 +1,9 @@
+/* Small additions on top of the legacy stylesheet. */
+.toast-flash {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 2000;
+  min-width: 220px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}

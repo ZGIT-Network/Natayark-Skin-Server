@@ -1,0 +1,45 @@
+- generic [active] [ref=f9e1]:
+  - link "跳至主要内容" [ref=f9e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=f9e3]:
+    - generic [ref=f9e4]:
+      - link "Natayark Skin SKIN & IDENTITY" [ref=f9e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f9e7]:
+          - text: Natayark Skin
+          - generic [ref=f9e8]: SKIN & IDENTITY
+      - navigation "主导航" [ref=f9e9]:
+        - link "皮肤库" [ref=f9e10] [cursor=pointer]:
+          - /url: /skinlib
+        - link "客户端配置" [ref=f9e11] [cursor=pointer]:
+          - /url: /user/config
+      - generic [ref=f9e12]:
+        - link "登录" [ref=f9e13] [cursor=pointer]:
+          - /url: /auth/login
+        - link "注册" [ref=f9e14] [cursor=pointer]:
+          - /url: /auth/register
+  - main [ref=f9e15]:
+    - generic [ref=f9e16]:
+      - paragraph [ref=f9e17]: "400"
+      - heading "认证" [level=1] [ref=f9e18]
+      - paragraph [ref=f9e19]: OAuth 状态无效、已使用或已过期，请重新登录
+      - link "返回首页" [ref=f9e20] [cursor=pointer]:
+        - /url: /
+  - contentinfo [ref=f9e21]:
+    - generic [ref=f9e22]:
+      - generic [ref=f9e23]: Natayark Skin
+      - generic [ref=f9e24]:
+        - link "津ICP备2025038348号" [ref=f9e25] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+        - text: "| Powered by Natayark Network"
+        - generic [ref=f9e26]:
+          - text: © 2024-2026
+          - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f9e27] [cursor=pointer]:
+            - /url: //www.zyghit.cn
+          - text: .
+        - text: All rights reserved.
+      - generic [ref=f9e28]:
+        - link "Yggdrasil API" [ref=f9e29] [cursor=pointer]:
+          - /url: /api/yggdrasil
+        - link "客户端配置" [ref=f9e30] [cursor=pointer]:
+          - /url: /user/config

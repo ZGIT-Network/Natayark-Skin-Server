@@ -1,0 +1,35 @@
+- generic [ref=f14e2]:
+  - navigation [ref=f14e4]:
+    - generic [ref=f14e5]:
+      - link "Natayark Skin" [ref=f14e7] [cursor=pointer]:
+        - /url: /
+      - list [ref=f14e9]:
+        - listitem [ref=f14e10]:
+          - link "皮肤库" [ref=f14e11] [cursor=pointer]:
+            - /url: /skinlib
+        - listitem [ref=f14e12]:
+          - link "简体中文" [ref=f14e13] [cursor=pointer]:
+            - /url: "#"
+            - generic [aria-hidden] [ref=f14e14]: 
+            - text: 简体中文
+        - listitem [ref=f14e15]:
+          - link "User Image E2E_OAuth用户" [ref=f14e16] [cursor=pointer]:
+            - /url: "#"
+            - img "User Image" [ref=f14e17]
+            - generic [ref=f14e18]: E2E_OAuth用户
+  - generic [ref=f14e19]:
+    - heading "Natayark Skin" [level=1] [ref=f14e20]
+    - paragraph [ref=f14e21]: 由 ZGIT Network 提供的 Minecraft 皮肤站与第三方登录验证服务
+    - paragraph [ref=f14e22]:
+      - link "用户中心" [ref=f14e23] [cursor=pointer]:
+        - /url: /user
+  - generic [ref=f14e25]:
+    - link "津ICP备2025038348号" [ref=f14e26] [cursor=pointer]:
+      - /url: https://beian.miit.gov.cn
+    - text: "| Powered by Natayark Network"
+    - generic [ref=f14e27]:
+      - text: © 2024-2026
+      - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f14e28] [cursor=pointer]:
+        - /url: //www.zyghit.cn
+      - text: .
+    - text: All rights reserved.

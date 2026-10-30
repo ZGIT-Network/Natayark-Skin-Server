@@ -1,0 +1,20 @@
+    </main>
+    <footer class="page-footer">
+      <div class="mx-auto flex max-w-[90rem] flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div><%- include('copyright') %></div>
+        <a href="/api/yggdrasil" class="transition-colors hover:text-foreground">Yggdrasil API</a>
+      </div>
+    </footer>
+  </div>
+</div>
+<script>
+  window.__CSRF = <%- JSON.stringify(typeof csrf !== 'undefined' ? csrf : '') %>;
+  window.__USER_ID = <%- JSON.stringify(typeof user !== 'undefined' && user ? user.uid : 0) %>;
+</script>
+<script src="/js/ui.js"></script>
+<script src="/js/app.js"></script>
+<% if (typeof customJs !== 'undefined' && customJs) { %>
+<script><%- customJs %></script>
+<% } %>
+</body>
+</html>

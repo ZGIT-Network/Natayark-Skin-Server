@@ -1,0 +1,29 @@
+<%
+  if (typeof t !== 'function') locals.t = function (key) { return key; };
+  const __scope = typeof scope !== 'undefined' ? scope : 'user';
+  const __title = typeof title !== 'undefined' ? title : '';
+  const __lang = typeof htmlLang !== 'undefined' ? htmlLang : 'zh-CN';
+  const __dark = typeof darkMode !== 'undefined' && darkMode;
+%>
+<!DOCTYPE html>
+<html lang="<%= __lang %>" class="<%= __dark ? 'dark' : '' %>">
+<head>
+  <%- include('head') %>
+</head>
+<body>
+<div class="app-shell">
+  <%- include('sidebar', { scope: __scope }) %>
+  <div class="app-main">
+    <%- include('navbar') %>
+    <main class="page" data-page-content>
+      <div class="page-header">
+        <div class="min-w-0">
+          <h1 class="page-title"><%= __title %></h1>
+          <% if (typeof pageDescription !== 'undefined' && pageDescription) { %>
+          <p class="page-description"><%= pageDescription %></p>
+          <% } %>
+        </div>
+        <% if (typeof pageActions !== 'undefined' && pageActions) { %>
+        <div class="flex flex-wrap items-center gap-2"><%- pageActions %></div>
+        <% } %>
+      </div>

@@ -1,0 +1,111 @@
+- generic [ref=f4e2]:
+  - complementary [ref=f4e3]:
+    - link "Natayark Skin" [ref=f4e5] [cursor=pointer]:
+      - /url: /
+    - link "Review30a6a592 review-30a6a592@example.test" [ref=f4e12] [cursor=pointer]:
+      - /url: /user
+      - generic [ref=f4e14]:
+        - generic [ref=f4e15]: Review30a6a592
+        - generic [ref=f4e16]: review-30a6a592@example.test
+    - navigation [ref=f4e17]:
+      - generic [ref=f4e18]: 用户中心
+      - link "仪表盘" [ref=f4e19] [cursor=pointer]:
+        - /url: /user
+      - link "角色管理" [ref=f4e26] [cursor=pointer]:
+        - /url: /user/player
+      - link "我的衣柜" [ref=f4e30] [cursor=pointer]:
+        - /url: /user/closet
+      - generic [ref=f4e34]: 账户
+      - link "个人资料" [ref=f4e35] [cursor=pointer]:
+        - /url: /user/profile
+      - link "登录方式" [ref=f4e40] [cursor=pointer]:
+        - /url: /user/connections
+      - link "OAuth2 应用" [ref=f4e45] [cursor=pointer]:
+        - /url: /user/applications
+      - link "正版验证" [ref=f4e51] [cursor=pointer]:
+        - /url: /user/verification
+      - link "邀请注册" [ref=f4e56] [cursor=pointer]:
+        - /url: /user/sharing
+      - generic [ref=f4e62]: 浏览
+      - link "皮肤库" [ref=f4e63] [cursor=pointer]:
+        - /url: /skinlib
+    - button "登出" [ref=f4e70] [cursor=pointer]
+  - generic [ref=f4e75]:
+    - banner [ref=f4e76]:
+      - generic [ref=f4e77]:
+        - button "切换主题" [ref=f4e78] [cursor=pointer]
+        - button "简体中文" [ref=f4e83] [cursor=pointer]
+        - button "Review30a6a592" [ref=f4e86] [cursor=pointer]
+    - main [ref=f4e89]:
+      - generic [ref=f4e91]:
+        - heading "上传材质" [level=1] [ref=f4e92]
+        - paragraph [ref=f4e93]: 上传 PNG 皮肤或披风，支持高清材质。
+      - generic [ref=f4e94]:
+        - generic [ref=f4e97]:
+          - generic [ref=f4e98]:
+            - generic [ref=f4e99]: 材质文件
+            - generic [ref=f4e100] [cursor=pointer]:
+              - generic [ref=f4e105]: 选择 PNG 文件
+              - generic [ref=f4e106]: 未选择文件
+              - button "材质文件 选择 PNG 文件 未选择文件 皮肤 64×32 / 64×64 / 高清；披风宽高比 2:1；最大 1024 KB。" [ref=f4e107]
+            - generic [ref=f4e108]: 皮肤 64×32 / 64×64 / 高清；披风宽高比 2:1；最大 1024 KB。
+          - generic [ref=f4e110]:
+            - generic [ref=f4e111]: 材质名称
+            - textbox "材质名称" [ref=f4e112]
+          - generic [ref=f4e113]:
+            - generic [ref=f4e114]:
+              - generic [ref=f4e115]: 类型
+              - combobox "类型" [ref=f4e117]:
+                - option "皮肤" [selected]
+                - option "披风"
+            - generic [ref=f4e118]:
+              - generic [ref=f4e119]: 模型
+              - combobox "模型 仅对皮肤有效；纤细模型必须为正方形。" [ref=f4e121]:
+                - option "Steve (经典)" [selected]
+                - option "Alex (纤细)"
+              - generic [ref=f4e122]: 仅对皮肤有效；纤细模型必须为正方形。
+          - group "可见性" [ref=f4e123]:
+            - generic [ref=f4e125]:
+              - generic [ref=f4e126] [cursor=pointer]:
+                - radio "公开 3 积分 / KB · 奖励 20 积分" [checked] [ref=f4e127]
+                - generic [ref=f4e128]:
+                  - generic [ref=f4e129]: 公开
+                  - generic [ref=f4e130]: 3 积分 / KB · 奖励 20 积分
+              - generic [ref=f4e131] [cursor=pointer]:
+                - radio "私有 25 积分 / KB" [ref=f4e132]
+                - generic [ref=f4e133]:
+                  - generic [ref=f4e134]: 私有
+                  - generic [ref=f4e135]: 25 积分 / KB
+          - button "上传" [ref=f4e136] [cursor=pointer]
+        - complementary [ref=f4e137]:
+          - heading "费用说明" [level=2] [ref=f4e140]
+          - generic [ref=f4e141]:
+            - generic [ref=f4e142]:
+              - generic [ref=f4e143]: 公开材质
+              - generic [ref=f4e144]: 3 积分 / KB
+            - generic [ref=f4e145]:
+              - generic [ref=f4e146]: 私有材质
+              - generic [ref=f4e147]: 25 积分 / KB
+            - generic [ref=f4e148]:
+              - generic [ref=f4e149]: 公开上传奖励
+              - generic [ref=f4e150]: 20 积分
+            - generic [ref=f4e151]:
+              - generic [ref=f4e152]: 加入衣柜
+              - generic [ref=f4e153]: 2 积分 / 件
+            - generic [ref=f4e154]:
+              - text: 当前积分：
+              - strong [ref=f4e155]: "10000"
+    - contentinfo [ref=f4e156]:
+      - generic [ref=f4e157]:
+        - generic [ref=f4e158]:
+          - link "津ICP备2025038348号" [ref=f4e159] [cursor=pointer]:
+            - /url: https://beian.miit.gov.cn
+          - text: "| Powered by Natayark Network"
+          - generic [ref=f4e160]:
+            - text: © 2024-2026
+            - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f4e161] [cursor=pointer]:
+              - /url: //www.zyghit.cn
+            - text: .
+          - text: All rights reserved.
+        - link "Yggdrasil API" [ref=f4e162] [cursor=pointer]:
+          - /url: /api/yggdrasil

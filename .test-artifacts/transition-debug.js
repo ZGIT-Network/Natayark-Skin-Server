@@ -1,0 +1,3 @@
+async page=>{
+  return await page.evaluate(()=>({browser:navigator.userAgent,visibility:document.visibilityState,reduce:matchMedia('(prefers-reduced-motion: reduce)').matches,viewName:getComputedStyle(document.querySelector('[data-page-content]')).viewTransitionName,ruleSupport:typeof CSSViewTransitionRule,eventSupport:'onpagereveal'in window,transition:window.__reviewNativeTransition,error:window.__reviewTransitionError,ready:window.__reviewTransitionReady,rules:[...document.styleSheets].flatMap(s=>[...s.cssRules].filter(rule=>rule.cssText.includes('@view-transition')||rule.cssText.startsWith('@media (prefers-reduced-motion')).map(rule=>rule.cssText))}));
+}

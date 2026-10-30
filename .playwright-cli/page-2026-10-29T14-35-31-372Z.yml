@@ -1,0 +1,41 @@
+- generic [active] [ref=f18e1]:
+  - banner [ref=f18e2]:
+    - generic [ref=f18e3]:
+      - link "Natayark Skin" [ref=f18e4] [cursor=pointer]:
+        - /url: /
+      - navigation "主导航" [ref=f18e5]:
+        - link "皮肤库" [ref=f18e6] [cursor=pointer]:
+          - /url: /skinlib
+        - link "启动器配置" [ref=f18e7] [cursor=pointer]:
+          - /url: /user/config
+      - generic [ref=f18e8]:
+        - button "切换主题" [ref=f18e9] [cursor=pointer]
+        - button "简体中文" [ref=f18e14] [cursor=pointer]
+        - link "登录" [ref=f18e16] [cursor=pointer]:
+          - /url: /auth/login
+  - main [ref=f18e17]:
+    - generic [ref=f18e18]:
+      - generic [ref=f18e19]:
+        - paragraph [ref=f18e20]: Minecraft 皮肤站
+        - heading "Natayark Skin" [level=1] [ref=f18e21]
+        - paragraph [ref=f18e22]: 由 ZGIT Network 提供的 Minecraft 皮肤站与第三方登录验证服务
+        - generic [ref=f18e23]:
+          - link "登录" [ref=f18e24] [cursor=pointer]:
+            - /url: /auth/login
+          - link "注册" [ref=f18e25] [cursor=pointer]:
+            - /url: /auth/register
+          - link "浏览皮肤库" [ref=f18e26] [cursor=pointer]:
+            - /url: /skinlib
+            - text: 浏览皮肤库 →
+      - img "Minecraft 游戏场景" [ref=f18e27]
+  - contentinfo [ref=f18e28]:
+    - generic [ref=f18e29]:
+      - link "津ICP备2025038348号" [ref=f18e30] [cursor=pointer]:
+        - /url: https://beian.miit.gov.cn
+      - text: "| Powered by Natayark Network"
+      - generic [ref=f18e31]:
+        - text: © 2024-2026
+        - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f18e32] [cursor=pointer]:
+          - /url: //www.zyghit.cn
+        - text: .
+      - text: All rights reserved.

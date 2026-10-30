@@ -1,0 +1,33 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<% if (typeof csrf !== 'undefined' && csrf) { %>
+<meta name="csrf-token" content="<%= csrf %>">
+<% } %>
+<title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %><%= typeof siteName !== 'undefined' ? siteName : 'Natayark SkinServer' %></title>
+<% if (typeof siteDescription !== 'undefined' && siteDescription) { %>
+<meta name="description" content="<%= siteDescription %>">
+<% } %>
+<%
+  const favRaw = String(typeof faviconUrl !== 'undefined' && faviconUrl ? faviconUrl : '/favicon.ico').replace(/^\.\//, '/');
+  const favHref = /^(https?:)?\/\//.test(favRaw) || favRaw.startsWith('/') ? favRaw : '/' + favRaw;
+%>
+<link rel="shortcut icon" href="<%= favHref %>">
+<script>
+  window.__UI_ICONS = <%- JSON.stringify({success:icon('circle-check'),error:icon('alert-triangle'),warning:icon('alert-triangle'),info:icon('info'),close:icon('x')}) %>;
+  (function () {
+    var fallback = <%- JSON.stringify(typeof themeDefaultMode !== 'undefined' ? themeDefaultMode : 'system') %>;
+    var saved;
+    try { saved = localStorage.getItem('mcnskin-theme'); } catch (error) {}
+    var mode = ['system', 'light', 'dark'].indexOf(saved) >= 0 ? saved : fallback;
+    var root = document.documentElement;
+    root.classList.add('js');
+    root.dataset.themeDefault = fallback;
+    root.dataset.themeMode = mode;
+    root.classList.toggle('dark', mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+  })();
+</script>
+<link rel="stylesheet" href="/css/app.css">
+<% if (typeof themeCss !== 'undefined') { %><style id="site-theme"><%- themeCss %></style><% } %>
+<% if (typeof customCss !== 'undefined' && customCss) { %>
+<style><%- customCss %></style>
+<% } %>

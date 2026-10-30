@@ -1,0 +1,22 @@
+<%
+  if (typeof t !== 'function') locals.t = function (key) { return key; };
+  const __lang = typeof htmlLang !== 'undefined' ? htmlLang : 'zh-CN';
+  const __dark = typeof darkMode !== 'undefined' && darkMode;
+  const __brand = typeof brand !== 'undefined' && brand ? brand : (typeof siteName !== 'undefined' ? siteName : 'Natayark SkinServer');
+%>
+<!DOCTYPE html>
+<html lang="<%= __lang %>" class="<%= __dark ? 'dark' : '' %>">
+<head>
+  <%- include('head') %>
+</head>
+<body class="auth-page">
+  <div class="w-full max-w-xl" data-page-content>
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <a href="/" class="flex min-w-0 items-center gap-2.5">
+        <span class="site-wordmark"><%= __brand %></span>
+      </a>
+      <a href="/" class="btn btn-ghost btn-sm"><span><%= typeof backLabel !== 'undefined' && backLabel ? backLabel : '返回站点' %></span></a>
+    </div>
+
+    <div class="card">
+      <div class="card-content p-6">

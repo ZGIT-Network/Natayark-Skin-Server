@@ -1,0 +1,106 @@
+<%- include('../partials/layout-user-top', { title: t('general.dashboard') }) %>
+
+<% if (!hasPassword) { %>
+<div class="alert alert-warning mb-5">
+  <%- icon('key-round') %>
+  <div>
+    <div class="alert-title"><%= t('user.set-password-hint') %></div>
+    <a href="/auth/oauth/set-password" class="mt-1 inline-block">立即设置密码</a>
+  </div>
+</div>
+<% } %>
+
+<div class="grid gap-5 lg:grid-cols-3">
+  <div class="space-y-5 lg:col-span-2">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title"><%= t('general.player-manage') %></h2>
+          <p class="card-description">共 <%= players.length %> 个角色</p>
+        </div>
+        <a href="/user/player" class="btn btn-outline btn-sm">管理角色</a>
+      </div>
+      <div class="card-content">
+        <% if (players.length === 0) { %>
+        <div class="empty-state">
+          
+          <div class="empty-state-title"><%= t('user.no-players') %></div>
+          <a href="/user/player" class="btn btn-primary btn-sm"><%= t('player.add') %></a>
+        </div>
+        <% } else { %>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <% for (const p of players) { %>
+          <a href="/user/player" class="group overflow-hidden rounded-xl border border-border bg-background transition-colors hover:border-brand/40">
+            <div class="texture-preview min-h-36 p-3">
+              <% if (p.skinHash) { %>
+              <img src="/preview/<%= p.skinTid %>?v=4&model=<%= p.model %>&size=160" alt="<%= p.name %>" loading="lazy">
+              <% } else { %>
+              <img src="/avatar/player/<%= encodeURIComponent(p.name) %>?size=110" alt="" width="96" height="96" class="rounded-md">
+              <% } %>
+            </div>
+            <div class="border-t border-border px-3 py-2.5">
+              <div class="truncate text-sm font-medium"><%= p.name %></div>
+              <div class="mt-0.5 text-xs text-muted-foreground"><%= p.model === 'slim' ? 'Alex' : 'Steve' %></div>
+            </div>
+          </a>
+          <% } %>
+        </div>
+        <% } %>
+      </div>
+    </section>
+
+    <% if (announcementHtml.trim()) { %>
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title"><%= t('user.announcement') %></h2>
+        </div>
+      </div>
+      <div class="card-content">
+        <div class="prose"><%- announcementHtml %></div>
+      </div>
+    </section>
+    <% } %>
+  </div>
+
+  <aside class="space-y-5">
+    <div class="stat-card">
+      <div class="min-w-0 flex-1">
+        <div class="stat-label"><%= t('user.score') %></div>
+        <div class="stat-value" data-user-score><%= user.score %></div>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-content">
+        <button id="sign-btn" type="button" class="btn btn-primary w-full" <%= canSign ? '' : 'disabled' %>>
+          <%- icon('calendar') %><%= canSign ? t('user.sign') : t('user.signed') %>
+        </button>
+        <p id="sign-msg" class="mt-2 text-center text-xs text-muted-foreground">
+          <%= t('user.sign-rule').replace(':min', scoreRuleMin).replace(':max', scoreRuleMax) %>
+        </p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title"><%= t('footer.launcher-config') %></h2>
+        </div>
+      </div>
+      <div class="card-content space-y-2">
+        <div class="flex gap-1.5">
+          <input class="input font-mono text-xs" id="ygg-url" readonly value="<%= siteUrl %>/api/yggdrasil">
+          <button type="button" class="btn btn-outline btn-icon" data-copy="#ygg-url" aria-label="复制">
+            <%- icon('copy') %>
+          </button>
+        </div>
+        <a href="/user/config" class="inline-flex items-center gap-1 text-xs font-medium text-brand-strong hover:underline dark:text-brand">
+          <%= t('footer.launcher-config') %><%- icon('arrow-right', 'size-3') %>
+        </a>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<%- include('../partials/layout-bottom') %>

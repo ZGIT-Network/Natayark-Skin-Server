@@ -1,0 +1,88 @@
+<% const homePic = (homePicUrl || '/app/bg.webp').replace(/^\.\//, '/'); %>
+<!DOCTYPE html>
+<html lang="<%= htmlLang %>" class="<%= darkMode ? 'dark' : '' %>">
+<head><%- include('partials/head') %></head>
+<body class="home-page home-<%= homeLayout %>">
+<header class="home-header <%= homeLayout === 'classic' && transparentNavbar ? 'home-header-overlay' : '' %>">
+  <div class="home-container home-header-inner">
+    <%- include('partials/brand') %>
+    <nav class="home-nav" aria-label="<%= t('home.navigation') %>">
+      <a href="/skinlib" class="home-nav-link"><%= t('general.skinlib') %></a>
+      <a href="/user/config" class="home-nav-link hidden sm:inline-flex"><%= t('footer.launcher-config') %></a>
+    </nav>
+    <div class="home-account">
+      <%- include('partials/theme-menu') %>
+      <%- include('partials/languages') %>
+      <% if (user) { %>
+      <%- include('partials/user-menu') %>
+      <% } else { %>
+      <a href="/auth/login" class="btn btn-outline btn-sm"><%= t('general.login') %></a>
+      <% } %>
+    </div>
+  </div>
+</header>
+
+<main data-page-content>
+  <% if (previewLayout) { %><div class="layout-preview-notice">首页样式预览：<%= homeLayout %> · <a href="/admin/settings#appearance">返回后台设置</a></div><% } %>
+  <section class="home-intro-section">
+  <div class="home-container">
+  <section class="home-intro">
+    <div class="home-intro-copy">
+      <p class="home-kicker"><%= t('home.kind') %></p>
+      <h1><%= siteName %></h1>
+      <p class="home-description"><%= siteDescription || t('home.description') %></p>
+      <div class="home-actions">
+        <% if (user) { %>
+        <a href="/user" class="btn btn-primary"><%= t('general.user-center') %></a>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-primary"><%= t('general.login') %></a>
+        <% if (localLoginEnabled) { %><a href="/auth/register" class="btn btn-outline"><%= t('general.register') %></a><% } %>
+        <% } %>
+        <a href="/skinlib" class="home-text-link"><%= t('home.browse') %> <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+    <div class="home-visual <%= fixedBg ? 'home-visual-fixed' : '' %>" style="background-image:url('<%= homePic %>')" role="img" aria-label="<%= t('home.image') %>"></div>
+  </section>
+  </div>
+  </section>
+
+  <div class="home-container">
+  <% if (showRecent) { %>
+  <section class="home-library" aria-labelledby="recent-title">
+    <div class="home-section-heading">
+      <div><h2 id="recent-title"><%= t('home.recent') %></h2><p><%= t('home.community') %></p></div>
+      <a href="/skinlib" class="home-text-link"><%= t('home.all') %> <span aria-hidden="true">→</span></a>
+    </div>
+    <% if (recentTextures.length) { %>
+    <div class="home-textures">
+      <% for (const item of recentTextures) { %>
+      <a href="/skinlib/show/<%= item.tid %>" class="texture-card">
+        <div class="texture-preview"><img src="/preview/<%= item.tid %>?v=4&model=<%= item.type %>&size=180" alt="<%= item.name %>" decoding="async"></div>
+        <div class="texture-caption"><span class="truncate"><%= item.name %></span><small><%= item.type === 'cape' ? t('skinlib.type-cape') : item.type === 'alex' ? 'Alex' : 'Steve' %></small></div>
+      </a>
+      <% } %>
+    </div>
+    <% } else { %>
+    <p class="home-empty"><%= t('home.empty') %><a href="/skinlib/upload" class="home-text-link"><%= t('skinlib.upload') %></a></p>
+    <% } %>
+  </section>
+  <% } %>
+  <% if (!hideIntro) { %>
+  <section class="home-guide">
+    <div><h2><%= t('home.players') %></h2><p><%= t('home.players-help') %></p><a href="/user/player" class="home-text-link"><%= t('general.player-manage') %></a></div>
+    <div><h2><%= t('home.connect') %></h2><p><%= t('home.connect-help') %></p><a href="/user/config" class="home-text-link"><%= t('home.config') %></a></div>
+    <div><h2><%= t('home.account') %></h2><p><%= t('home.account-help') %></p><a href="/user/profile" class="home-text-link"><%= t('home.settings') %></a></div>
+  </section>
+  <% } %>
+  </div>
+</main>
+
+<footer class="home-footer"><div class="home-container"><%- include('partials/copyright') %></div></footer>
+<script>
+  window.__CSRF = <%- JSON.stringify(csrf) %>;
+  window.__USER_ID = <%- JSON.stringify(user ? user.uid : 0) %>;
+</script>
+<script src="/js/ui.js"></script>
+<% if (customJs) { %><script><%- customJs %></script><% } %>
+</body>
+</html>

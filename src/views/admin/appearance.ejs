@@ -1,0 +1,44 @@
+<div class="tab-panel" data-tab-panel="appearance" hidden>
+  <form method="post" action="/admin/settings" data-appearance-form class="space-y-5">
+    <input type="hidden" name="csrf" value="<%= csrf %>">
+    <input type="hidden" name="action" value="appearance">
+    <section class="card">
+      <div class="card-header"><div><h2 class="card-title">站点配色</h2><p class="card-description">浅色和深色可分别设置，文字颜色会自动匹配。</p></div></div>
+      <div class="card-content space-y-5">
+        <div class="palette-presets" aria-label="内置配色">
+          <% for (const palette of palettes) { %>
+          <button type="button" class="palette-preset" data-palette-primary="<%= palette.light %>" data-palette-dark="<%= palette.dark %>" data-palette-background="<%= palette.background %>" data-palette-night="<%= palette.night %>"><span style="background:<%= palette.light %>" aria-hidden="true"></span><%= palette.name %></button>
+          <% } %>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <% for (const [key, label] of [['theme_primary','浅色主题色'],['theme_primary_dark','深色主题色'],['theme_background','浅色背景'],['theme_background_dark','深色背景']]) { %>
+          <label class="field"><span class="label"><%= label %></span><span class="color-field"><input type="color" name="<%= key %>" value="<%= appearance[key] %>" aria-label="<%= label %>"><code data-color-value="<%= key %>"><%= appearance[key] %></code></span></label>
+          <% } %>
+          <label class="field"><span class="label">访客默认模式</span><span class="select-wrap"><select class="select" name="theme_default_mode"><% for (const mode of ['system','light','dark']) { %><option value="<%= mode %>" <%= appearance.theme_default_mode === mode ? 'selected' : '' %>><%= t('theme.' + mode) %></option><% } %></select></span><span class="field-hint">访客可以在页头自行选择，首次访问默认跟随这里的设置。</span></label>
+        </div>
+        <div class="appearance-samples">
+          <% for (const mode of ['light', 'dark']) { %>
+          <div class="appearance-sample" data-color-sample="<%= mode %>"><div class="sample-nav"><%- icon('shirt') %>Natayark SkinServer</div><div class="sample-body"><strong><%= mode === 'dark' ? '深色预览' : '浅色预览' %></strong><p>文字、导航与按钮配色</p><button type="button" tabindex="-1">进入用户中心</button></div></div>
+          <% } %>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><div><h2 class="card-title">首页样式</h2><p class="card-description">内置布局共用站点名称、图片和材质数据。预览仅管理员可见，不会直接修改设置。</p></div></div>
+      <div class="card-content space-y-5">
+        <div class="home-layout-options">
+          <% for (const layout of homeLayouts) { %>
+          <label class="layout-choice"><input type="radio" name="home_layout" value="<%= layout.key %>" <%= appearance.home_layout === layout.key ? 'checked' : '' %>><span class="layout-diagram layout-diagram-<%= layout.key %>" aria-hidden="true"><span></span><span></span><span></span></span><span class="layout-choice-title"><%= layout.name %></span><span class="layout-choice-description"><%= layout.description %></span><a href="/?layout_preview=<%= layout.key %>" target="_blank" rel="noopener">预览首页 <%- icon('arrow-right', 'size-3') %></a></label>
+          <% } %>
+        </div>
+        <label class="field"><span class="label">首页图片地址</span><input class="input" name="home_pic_url" value="<%= homePicture %>" placeholder="/app/bg.webp 或 https://…"><span class="field-hint">留空使用内置图片；大图与分栏样式使用此图片。</span></label>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <% for (const [key, label, enabled] of [['home_show_recent','展示最近上传',appearance.home_show_recent === 'true'],['hide_intro','隐藏使用介绍',hideIntroduction],['fixed_bg','固定背景图片',fixedBackground],['transparent_navbar','大图样式透明导航',transparentNavigation]]) { %>
+          <label class="field"><span class="label"><%= label %></span><span class="select-wrap"><select class="select" name="<%= key %>"><option value="true" <%= enabled ? 'selected' : '' %>>是</option><option value="false" <%= !enabled ? 'selected' : '' %>>否</option></select></span></label>
+          <% } %>
+        </div>
+      </div>
+      <div class="card-footer"><button type="submit" class="btn btn-primary"><%- icon('check') %>保存外观与首页</button></div>
+    </section>
+  </form>
+</div>

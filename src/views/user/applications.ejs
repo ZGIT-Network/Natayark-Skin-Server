@@ -1,0 +1,105 @@
+<%- include('../partials/layout-user-top', { title: t('general.oauth-manage'), pageDescription: '注册并管理 OAuth / Yggdrasil Connect 客户端。' }) %>
+
+<div class="grid gap-5 lg:grid-cols-3">
+  <section class="card lg:col-span-2">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">我的应用</h2>
+        <p class="card-description">共 <%= clients.length %> 个应用</p>
+      </div>
+    </div>
+    <% if (clients.length === 0) { %>
+    <div class="empty-state">
+      
+      <div class="empty-state-title">还没有注册应用</div>
+      <div class="empty-state-text">使用右侧表单注册第一个 OAuth 客户端。</div>
+    </div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>名称 / Client ID</th><th>Client Secret</th><th>回调 URI</th><th class="text-right">操作</th></tr>
+        </thead>
+        <tbody>
+          <% for (const client of clients) { %>
+          <tr>
+            <td>
+              <div class="font-medium"><%= client.name %></div>
+              <div class="mt-0.5 font-mono text-[0.7rem] text-muted-foreground"><%= client.id %></div>
+            </td>
+            <td>
+              <% if (client.secret) { %>
+              <details class="group">
+                <summary class="cursor-pointer text-xs font-medium text-brand-strong hover:underline dark:text-brand">显示密钥</summary>
+                <div class="mt-1 flex items-center gap-1">
+                  <code class="max-w-40 truncate text-[0.7rem] text-muted-foreground"><%= client.secret %></code>
+                  <button type="button" class="btn btn-ghost btn-icon btn-xs" data-copy-text="<%= client.secret %>" aria-label="复制密钥"><%- icon('copy') %></button>
+                </div>
+              </details>
+              <% } else { %>
+              <span class="badge badge-outline">公共客户端</span>
+              <% } %>
+            </td>
+            <td><code class="text-xs text-muted-foreground"><%= client.redirect || '—' %></code></td>
+            <td class="text-right">
+              <button type="button" class="btn btn-ghost btn-sm text-destructive hover:bg-destructive/10 hover:text-destructive" data-revoke-client="<%= client.id %>">撤销</button>
+            </td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><div><h2 class="card-title">注册应用</h2></div></div>
+    <div class="card-content">
+      <form id="create-client" class="grid gap-4">
+        <label class="field">
+          <span class="label">应用名称</span>
+          <input class="input" name="name" required maxlength="100">
+        </label>
+        <label class="field">
+          <span class="label">回调 URI</span>
+          <textarea class="textarea" name="redirect" required rows="3" placeholder="https://example.com/callback"></textarea>
+          <span class="field-hint">一行一个 URI。HTTP 仅允许本机回调，精确匹配已注册地址。</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" class="checkbox" id="public_client" name="public_client" value="1">
+          <span>公共客户端（无 Client Secret）</span>
+        </label>
+        <button class="btn btn-primary" type="submit">注册应用</button>
+        <p id="client-message" class="text-sm text-destructive" role="status"></p>
+      </form>
+    </div>
+  </section>
+</div>
+
+<% if (tokens && tokens.length) { %>
+<div class="mt-5">
+  <div class="mb-3 flex items-center justify-between gap-3">
+    <h2 class="text-base font-semibold">个人访问令牌</h2>
+  </div>
+  <div class="card overflow-hidden">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>名称</th><th>权限范围</th><th>创建时间</th><th>过期时间</th></tr></thead>
+        <tbody>
+          <% for (const token of tokens) { %>
+          <tr>
+            <td><%= token.name %></td>
+            <td><code class="text-xs text-muted-foreground"><%= (token.scopes || []).join(' ') %></code></td>
+            <td class="text-muted-foreground"><%= token.created_at %></td>
+            <td class="text-muted-foreground"><%= token.expires_at || '—' %></td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<script src="/js/applications.js" defer></script>
+<%- include('../partials/layout-bottom') %>

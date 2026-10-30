@@ -1,0 +1,80 @@
+- generic [active] [ref=f13e1]:
+  - link "跳至主要内容" [ref=f13e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=f13e3]:
+    - generic [ref=f13e4]:
+      - link "Natayark Skin SKIN & IDENTITY" [ref=f13e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f13e7]:
+          - text: Natayark Skin
+          - generic [ref=f13e8]: SKIN & IDENTITY
+      - navigation "主导航" [ref=f13e9]:
+        - link "皮肤库" [ref=f13e10] [cursor=pointer]:
+          - /url: /skinlib
+        - link "用户中心" [ref=f13e11] [cursor=pointer]:
+          - /url: /user
+        - link "衣柜" [ref=f13e12] [cursor=pointer]:
+          - /url: /user/closet
+        - link "客户端配置" [ref=f13e13] [cursor=pointer]:
+          - /url: /user/config
+      - generic [ref=f13e14]:
+        - generic [ref=f13e15]: 积分 1200
+        - link "E2E_OAuth用户" [ref=f13e16] [cursor=pointer]:
+          - /url: /user/profile
+  - main [ref=f13e18]:
+    - generic [ref=f13e19]:
+      - generic [ref=f13e20]:
+        - generic [ref=f13e21]:
+          - heading "用户中心" [level=1] [ref=f13e22]
+          - generic [ref=f13e23]: e2e-oauth@example.com
+        - paragraph [ref=f13e25]:
+          - text: 未设置密码 —— 你通过第三方登录注册,设置密码后才能在启动器中登录。
+          - link "立即设置" [ref=f13e26] [cursor=pointer]:
+            - /url: /auth/oauth/set-password
+        - heading "我的角色" [level=2] [ref=f13e27]
+        - link "E2E_OAuth用户" [ref=f13e29] [cursor=pointer]:
+          - /url: /user/player
+        - generic [ref=f13e31]:
+          - link "角色管理 创建、重命名、更换皮肤" [ref=f13e32] [cursor=pointer]:
+            - /url: /user/player
+            - generic [ref=f13e33]: 角色管理
+            - text: 创建、重命名、更换皮肤
+          - link "我的衣柜 收藏的皮肤与披风" [ref=f13e34] [cursor=pointer]:
+            - /url: /user/closet
+            - generic [ref=f13e35]: 我的衣柜
+            - text: 收藏的皮肤与披风
+          - link "已授权应用 管理 Yggdrasil Connect 授权" [ref=f13e36] [cursor=pointer]:
+            - /url: /user/connections
+            - generic [ref=f13e37]: 已授权应用
+            - text: 管理 Yggdrasil Connect 授权
+      - complementary [ref=f13e38]:
+        - generic [ref=f13e39]:
+          - generic [ref=f13e40]: 积分
+          - generic [ref=f13e41]:
+            - generic [ref=f13e42]: "1200"
+            - button "签到" [ref=f13e43] [cursor=pointer]
+          - paragraph [ref=f13e44]: 每日签到可得 10–100 积分
+        - generic [ref=f13e45]:
+          - generic [ref=f13e46]: 启动器配置
+          - generic [ref=f13e47]: http://127.0.0.1:3000/api/yggdrasil
+          - button "复制地址" [ref=f13e48] [cursor=pointer]
+  - contentinfo [ref=f13e49]:
+    - generic [ref=f13e50]:
+      - generic [ref=f13e51]: Natayark Skin
+      - generic [ref=f13e52]:
+        - link "津ICP备2025038348号" [ref=f13e53] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+        - text: "| Powered by Natayark Network"
+        - generic [ref=f13e54]:
+          - text: © 2024-2026
+          - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f13e55] [cursor=pointer]:
+            - /url: //www.zyghit.cn
+          - text: .
+        - text: All rights reserved.
+      - generic [ref=f13e56]:
+        - link "Yggdrasil API" [ref=f13e57] [cursor=pointer]:
+          - /url: /api/yggdrasil
+        - link "客户端配置" [ref=f13e58] [cursor=pointer]:
+          - /url: /user/config
+        - link "退出登录" [ref=f13e59] [cursor=pointer]:
+          - /url: /auth/logout

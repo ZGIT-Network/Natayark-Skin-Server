@@ -1,0 +1,9 @@
+<%- include('../partials/layout-auth-top', { authTitle: t('general.logout'), authSubtitle: t('auth.logout-confirm') }) %>
+
+<form method="post" action="/auth/logout" class="grid gap-3">
+  <input type="hidden" name="csrf" value="<%= csrf %>">
+  <button type="submit" class="btn btn-destructive btn-lg w-full"><%= t('general.logout') %></button>
+  <a href="/" class="btn btn-outline w-full">取消</a>
+</form>
+
+<%- include('../partials/layout-auth-bottom') %>

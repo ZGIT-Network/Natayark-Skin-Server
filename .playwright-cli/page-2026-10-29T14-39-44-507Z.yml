@@ -1,0 +1,86 @@
+- generic [ref=f31e2]:
+  - complementary [ref=f31e3]:
+    - link "Natayark SkinServer" [ref=f31e5] [cursor=pointer]:
+      - /url: /
+    - link "Review6e9ed02a review-6e9ed02a@example.test" [ref=f31e7] [cursor=pointer]:
+      - /url: /user
+      - generic [ref=f31e9]:
+        - generic [ref=f31e10]: Review6e9ed02a
+        - generic [ref=f31e11]: review-6e9ed02a@example.test
+    - navigation [ref=f31e12]:
+      - generic [ref=f31e13]: 管理
+      - link "仪表盘" [ref=f31e14] [cursor=pointer]:
+        - /url: /admin
+      - link "用户管理" [ref=f31e16] [cursor=pointer]:
+        - /url: /admin/users
+      - link "角色管理" [ref=f31e18] [cursor=pointer]:
+        - /url: /admin/players
+      - link "资源配置" [ref=f31e20] [cursor=pointer]:
+        - /url: /admin/textures
+      - link "举报管理" [ref=f31e22] [cursor=pointer]:
+        - /url: /admin/reports
+      - link "OAuth / OIDC" [ref=f31e24] [cursor=pointer]:
+        - /url: /admin/clients
+      - link "个性化" [ref=f31e26] [cursor=pointer]:
+        - /url: /admin/settings
+      - link "多语言" [ref=f31e28] [cursor=pointer]:
+        - /url: /admin/translations
+      - link "Yggdrasil 日志" [ref=f31e30] [cursor=pointer]:
+        - /url: /admin/ygg-log
+      - generic [ref=f31e32]: 返回
+      - link "用户中心" [ref=f31e33] [cursor=pointer]:
+        - /url: /user
+      - link "皮肤库" [ref=f31e35] [cursor=pointer]:
+        - /url: /skinlib
+    - button "登出" [ref=f31e39] [cursor=pointer]
+  - generic [ref=f31e41]:
+    - banner [ref=f31e42]:
+      - generic [ref=f31e43]:
+        - button "切换主题" [ref=f31e44] [cursor=pointer]
+        - button "简体中文" [ref=f31e49] [cursor=pointer]
+        - button "Review6e9ed02a" [ref=f31e52] [cursor=pointer]
+    - main [ref=f31e55]:
+      - generic [ref=f31e57]:
+        - heading "个性化" [level=1] [ref=f31e58]
+        - paragraph [ref=f31e59]: 配置站点、注册、积分、Yggdrasil 与登录方式。
+      - generic [ref=f31e60]:
+        - tablist [ref=f31e61]:
+          - tab "基本信息" [selected] [ref=f31e62] [cursor=pointer]
+          - tab "注册与角色" [ref=f31e63] [cursor=pointer]
+          - tab "积分经济" [ref=f31e64] [cursor=pointer]
+          - tab "Yggdrasil / OIDC" [ref=f31e65] [cursor=pointer]
+          - tab "第三方登录" [ref=f31e66] [cursor=pointer]
+        - generic [ref=f31e70]:
+          - heading "基本信息" [level=2] [ref=f31e73]
+          - generic [ref=f31e74]:
+            - generic [ref=f31e75]:
+              - generic [ref=f31e76]: 站点名称
+              - textbox "站点名称" [ref=f31e77]: Natayark SkinServer
+            - generic [ref=f31e78]:
+              - generic [ref=f31e79]: 站点 URL
+              - textbox "站点 URL 包含协议，结尾不要加斜杠。" [ref=f31e80]: http://127.0.0.1:3000
+              - generic [ref=f31e81]: 包含协议，结尾不要加斜杠。
+            - generic [ref=f31e82]:
+              - generic [ref=f31e83]: 站点描述
+              - textbox "站点描述" [ref=f31e84]: 由 ZGIT Network 提供的 Minecraft 皮肤站与第三方登录验证服务
+            - generic [ref=f31e85]:
+              - generic [ref=f31e86]: 版权文字（支持 HTML）
+              - textbox "版权文字（支持 HTML）" [ref=f31e87]: <a class="copy-link-style" href="https://beian.miit.gov.cn" target="_blank" data-v-63fc1e05="">津ICP备2025038348号</a> | Powered by Natayark Network<br/><b>&copy; 2024-2026 <a class="copy-link-style" href="//www.zyghit.cn">Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd</a>.</b> All rights reserved.
+            - generic [ref=f31e88]:
+              - generic [ref=f31e89]: 首页公告（Markdown）
+              - textbox "首页公告（Markdown）" [ref=f31e90]: "### 欢迎使用 Natayark Skin 皮肤站 **<p style=\"color:red;\">当您首次使用 Natayark ID登录本站时，请 [点击此处](/auth/forgot) 设置您的登录密码，才可以在启动器上登录。</p>** 由 ZGIT Network 提供的 Minecraft 皮肤站，可用于托管皮肤或材质资源，或通过由本站提供的登录验证服务进行 Minecraft 联机。也可以分享您的皮肤。 本站已启用基于 Natayark OpenID 的统一登录功能，您可通过 Natayark ID 直接登录并应用于服务器，您的实名认证结果会被所有使用本站进行身份验证的服务商认可。 *** #### 正版认证现已可用 现已可以进行正版验证（基于微软账户）。我们已获得访问 Minecraft 正版验证服务的权限，进行正版验证将获得1000积分。 *** **不应当使用本站上传任何违法或违规皮肤/资源。** 我们已更换CDN服务提供商，现在国内访问速度将更快速。 Natayark Skins 由 TencentCloud EdgeOne 提供CDN加速服务。"
+          - button "保存设置" [ref=f31e92] [cursor=pointer]
+    - contentinfo [ref=f31e93]:
+      - generic [ref=f31e94]:
+        - generic [ref=f31e95]:
+          - link "津ICP备2025038348号" [ref=f31e96] [cursor=pointer]:
+            - /url: https://beian.miit.gov.cn
+          - text: "| Powered by Natayark Network"
+          - generic [ref=f31e97]:
+            - text: © 2024-2026
+            - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f31e98] [cursor=pointer]:
+              - /url: //www.zyghit.cn
+            - text: .
+          - text: All rights reserved.
+        - link "Yggdrasil API" [ref=f31e99] [cursor=pointer]:
+          - /url: /api/yggdrasil

@@ -1,0 +1,145 @@
+- generic [ref=f15e2]:
+  - navigation [ref=f15e3]:
+    - list [ref=f15e4]:
+      - listitem [ref=f15e5]:
+        - link "" [ref=f15e6] [cursor=pointer]:
+          - /url: "#"
+    - list [ref=f15e8]:
+      - listitem [ref=f15e9]:
+        - button "" [ref=f15e10] [cursor=pointer]
+      - listitem [ref=f15e12]:
+        - link "简体中文" [ref=f15e13] [cursor=pointer]:
+          - /url: "#"
+          - generic [aria-hidden] [ref=f15e14]: 
+          - text: 简体中文
+      - listitem [ref=f15e15]:
+        - link "User Image E2E_OAuth用户" [ref=f15e16] [cursor=pointer]:
+          - /url: "#"
+          - img "User Image" [ref=f15e17]
+          - generic [ref=f15e18]: E2E_OAuth用户
+  - complementary [ref=f15e19]:
+    - link "Natayark Skin" [ref=f15e20] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f15e21]:
+      - generic [ref=f15e22]:
+        - img "User Image" [ref=f15e24]
+        - generic [ref=f15e25]: E2E_OAuth用户
+      - navigation [ref=f15e27]:
+        - menu [ref=f15e28]:
+          - listitem [ref=f15e29]: 用户中心
+          - listitem [ref=f15e30]:
+            - link " 仪表盘" [ref=f15e31] [cursor=pointer]:
+              - /url: /user
+              - generic [ref=f15e32]: 
+              - paragraph [ref=f15e33]: 仪表盘
+          - listitem [ref=f15e34]:
+            - link " 我的衣柜" [ref=f15e35] [cursor=pointer]:
+              - /url: /user/closet
+              - generic [ref=f15e36]: 
+              - paragraph [ref=f15e37]: 我的衣柜
+          - listitem [ref=f15e38]:
+            - link " 角色管理" [ref=f15e39] [cursor=pointer]:
+              - /url: /user/player
+              - generic [ref=f15e40]: 
+              - paragraph [ref=f15e41]: 角色管理
+          - listitem [ref=f15e42]:
+            - link " 我的举报" [ref=f15e43] [cursor=pointer]:
+              - /url: /user/reports
+              - generic [ref=f15e44]: 
+              - paragraph [ref=f15e45]: 我的举报
+          - listitem [ref=f15e46]:
+            - link " 个人资料" [ref=f15e47] [cursor=pointer]:
+              - /url: /user/profile
+              - generic [ref=f15e48]: 
+              - paragraph [ref=f15e49]: 个人资料
+          - listitem [ref=f15e50]:
+            - link " 高级功能 " [ref=f15e51] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=f15e52]: 
+              - paragraph [ref=f15e53]:
+                - text: 高级功能
+                - generic [ref=f15e54]: 
+            - text: 
+          - listitem [ref=f15e55]: 浏览
+          - listitem [ref=f15e56]:
+            - link " 皮肤库" [ref=f15e57] [cursor=pointer]:
+              - /url: /skinlib
+              - generic [ref=f15e58]: 
+              - paragraph [ref=f15e59]: 皮肤库
+          - listitem [ref=f15e60]: 管理
+          - listitem [ref=f15e61]:
+            - link " 管理面板" [ref=f15e62] [cursor=pointer]:
+              - /url: /admin
+              - generic [ref=f15e63]: 
+              - paragraph [ref=f15e64]: 管理面板
+  - generic [ref=f15e65]:
+    - generic [ref=f15e66]:
+      - generic:
+        - generic:
+          - generic:
+            - heading [level=1]
+    - generic [ref=f15e68]:
+      - link "你通过第三方登录注册，设置密码后才能在启动器中登录。立即设置" [ref=f15e70] [cursor=pointer]:
+        - /url: /auth/oauth/set-password
+      - generic [ref=f15e71]:
+        - generic [ref=f15e72]:
+          - generic [ref=f15e73]:
+            - heading " 角色管理" [level=3] [ref=f15e75]:
+              - generic [ref=f15e76]: 
+              - text: 角色管理
+            - link "E2E_OAuth用户" [ref=f15e80] [cursor=pointer]:
+              - /url: /user/player
+          - generic [ref=f15e82]:
+            - heading " 站点公告" [level=3] [ref=f15e84]:
+              - generic [ref=f15e85]: 
+              - text: 站点公告
+            - generic [ref=f15e86]:
+              - heading "欢迎使用 Natayark Skin 皮肤站" [level=3] [ref=f15e87]
+              - paragraph:
+                - strong
+              - paragraph [ref=f15e88]:
+                - strong [ref=f15e89]:
+                  - text: 当您首次使用 Natayark ID登录本站时，请
+                  - link "点击此处" [ref=f15e90] [cursor=pointer]:
+                    - /url: /auth/forgot
+                  - text: 设置您的登录密码，才可以在启动器上登录。
+              - paragraph
+              - paragraph [ref=f15e91]: 由 ZGIT Network 提供的 Minecraft 皮肤站，可用于托管皮肤或材质资源，或通过由本站提供的登录验证服务进行 Minecraft 联机。也可以分享您的皮肤。
+              - paragraph [ref=f15e92]: 本站已启用基于 Natayark OpenID 的统一登录功能，您可通过 Natayark ID 直接登录并应用于服务器，您的实名认证结果会被所有使用本站进行身份验证的服务商认可。
+              - separator [ref=f15e93]
+              - heading "正版认证现已可用" [level=4] [ref=f15e94]
+              - paragraph [ref=f15e95]: 现已可以进行正版验证（基于微软账户）。我们已获得访问 Minecraft 正版验证服务的权限，进行正版验证将获得1000积分。
+              - separator [ref=f15e96]
+              - paragraph [ref=f15e97]:
+                - strong [ref=f15e98]: 不应当使用本站上传任何违法或违规皮肤/资源。
+              - paragraph [ref=f15e99]: 我们已更换CDN服务提供商，现在国内访问速度将更快速。 Natayark Skins 由 TencentCloud EdgeOne 提供CDN加速服务。
+        - complementary [ref=f15e100]:
+          - generic [ref=f15e101]:
+            - generic [ref=f15e102]: 
+            - generic [ref=f15e104]:
+              - generic [ref=f15e105]: 积分
+              - generic [ref=f15e106]: "1200"
+          - generic [ref=f15e108]:
+            - button "签到" [ref=f15e109] [cursor=pointer]
+            - paragraph [ref=f15e110]: 每日签到可得 10–100 积分
+          - generic [ref=f15e111]:
+            - heading " 启动器配置" [level=3] [ref=f15e113]:
+              - generic [ref=f15e114]: 
+              - text: 启动器配置
+            - generic [ref=f15e115]:
+              - generic [ref=f15e116]:
+                - textbox [ref=f15e117]: http://127.0.0.1:3000/api/yggdrasil
+                - button "" [ref=f15e119] [cursor=pointer]
+              - link "启动器配置 »" [ref=f15e121] [cursor=pointer]:
+                - /url: /user/config
+  - contentinfo [ref=f15e122]:
+    - generic [ref=f15e123]:
+      - link "津ICP备2025038348号" [ref=f15e124] [cursor=pointer]:
+        - /url: https://beian.miit.gov.cn
+      - text: "| Powered by Natayark Network"
+      - generic [ref=f15e125]:
+        - text: © 2024-2026
+        - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f15e126] [cursor=pointer]:
+          - /url: //www.zyghit.cn
+        - text: .
+      - text: All rights reserved.

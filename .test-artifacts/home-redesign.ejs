@@ -1,0 +1,82 @@
+<% const homePic = (homePicUrl || '/app/bg.webp').replace(/^\.\//, '/'); %>
+<!DOCTYPE html>
+<html lang="<%= htmlLang %>" class="<%= darkMode ? 'dark' : '' %>">
+<head><%- include('partials/head') %></head>
+<body class="home-page">
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <%- include('partials/brand') %>
+    <nav class="home-nav" aria-label="主导航">
+      <a href="/skinlib" class="home-nav-link"><%= t('general.skinlib') %></a>
+      <a href="/user/config" class="home-nav-link hidden sm:inline-flex"><%= t('footer.launcher-config') %></a>
+    </nav>
+    <div class="home-account">
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="切换主题">
+        <span class="dark:hidden"><%- icon('moon') %></span>
+        <span class="hidden dark:block"><%- icon('sun') %></span>
+      </button>
+      <%- include('partials/languages') %>
+      <% if (user) { %>
+      <%- include('partials/user-menu') %>
+      <% } else { %>
+      <a href="/auth/login" class="btn btn-outline btn-sm"><%= t('general.login') %></a>
+      <% } %>
+    </div>
+  </div>
+</header>
+
+<main class="home-container">
+  <section class="home-intro">
+    <div class="home-intro-copy">
+      <p class="home-kicker">Minecraft 皮肤站</p>
+      <h1><%= siteName %></h1>
+      <p class="home-description"><%= siteDescription || '管理你的游戏角色、皮肤与披风。' %></p>
+      <div class="home-actions">
+        <% if (user) { %>
+        <a href="/user" class="btn btn-primary"><%= t('general.user-center') %></a>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-primary"><%= t('general.login') %></a>
+        <% if (localLoginEnabled) { %><a href="/auth/register" class="btn btn-outline"><%= t('general.register') %></a><% } %>
+        <% } %>
+        <a href="/skinlib" class="home-text-link">浏览皮肤库 <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+    <div class="home-visual <%= fixedBg ? 'home-visual-fixed' : '' %>" style="background-image:url('<%= homePic %>')" role="img" aria-label="Minecraft 游戏场景"></div>
+  </section>
+
+  <% if (!hideIntro) { %>
+  <section class="home-library" aria-labelledby="recent-title">
+    <div class="home-section-heading">
+      <div><h2 id="recent-title">最近上传</h2><p>社区分享的皮肤与披风</p></div>
+      <a href="/skinlib" class="home-text-link">全部材质 <span aria-hidden="true">→</span></a>
+    </div>
+    <% if (recentTextures.length) { %>
+    <div class="home-textures">
+      <% for (const item of recentTextures) { %>
+      <a href="/skinlib/show/<%= item.tid %>" class="texture-card">
+        <div class="texture-preview"><img src="/preview/hash/<%= item.hash %>?size=180" alt="<%= item.name %>" loading="lazy"></div>
+        <div class="texture-caption"><span class="truncate"><%= item.name %></span><small><%= item.type === 'cape' ? '披风' : item.type === 'alex' ? 'Alex' : 'Steve' %></small></div>
+      </a>
+      <% } %>
+    </div>
+    <% } else { %>
+    <p class="home-empty">还没有公开材质。<a href="/skinlib/upload" class="home-text-link">上传皮肤</a></p>
+    <% } %>
+  </section>
+  <section class="home-guide">
+    <div><h2>设置游戏皮肤</h2><p>上传或收藏材质，然后在角色管理中应用。</p><a href="/user/player" class="home-text-link">角色管理</a></div>
+    <div><h2>连接启动器</h2><p>使用支持外置登录的启动器，添加本站认证服务。</p><a href="/user/config" class="home-text-link">查看配置</a></div>
+    <div><h2>管理账户</h2><p>修改个人资料、绑定登录方式，管理应用授权。</p><a href="/user/profile" class="home-text-link">账户设置</a></div>
+  </section>
+  <% } %>
+</main>
+
+<footer class="home-footer"><div class="home-container"><%- include('partials/copyright') %></div></footer>
+<script>
+  window.__CSRF = <%- JSON.stringify(csrf) %>;
+  window.__USER_ID = <%- JSON.stringify(user ? user.uid : 0) %>;
+</script>
+<script src="/js/ui.js"></script>
+<% if (customJs) { %><script><%- customJs %></script><% } %>
+</body>
+</html>

@@ -1,0 +1,99 @@
+- generic [ref=f18e2]:
+  - navigation [ref=f18e3]:
+    - list [ref=f18e4]:
+      - listitem [ref=f18e5]:
+        - link "" [ref=f18e6] [cursor=pointer]:
+          - /url: "#"
+    - list [ref=f18e8]:
+      - listitem [ref=f18e9]:
+        - button "" [ref=f18e10] [cursor=pointer]
+      - listitem [ref=f18e12]:
+        - link "简体中文" [ref=f18e13] [cursor=pointer]:
+          - /url: "#"
+          - generic [aria-hidden] [ref=f18e14]: 
+          - text: 简体中文
+      - listitem [ref=f18e15]:
+        - link "User Image E2E_OAuth用户" [ref=f18e16] [cursor=pointer]:
+          - /url: "#"
+          - img "User Image" [ref=f18e17]
+          - generic [ref=f18e18]: E2E_OAuth用户
+  - complementary [ref=f18e19]:
+    - link "Natayark Skin" [ref=f18e20] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f18e21]:
+      - generic [ref=f18e22]:
+        - img "User Image" [ref=f18e24]
+        - generic [ref=f18e25]: E2E_OAuth用户
+      - navigation [ref=f18e27]:
+        - menu [ref=f18e28]:
+          - listitem [ref=f18e29]: 用户中心
+          - listitem [ref=f18e30]:
+            - link " 仪表盘" [ref=f18e31] [cursor=pointer]:
+              - /url: /user
+              - generic [ref=f18e32]: 
+              - paragraph [ref=f18e33]: 仪表盘
+          - listitem [ref=f18e34]:
+            - link " 我的衣柜" [ref=f18e35] [cursor=pointer]:
+              - /url: /user/closet
+              - generic [ref=f18e36]: 
+              - paragraph [ref=f18e37]: 我的衣柜
+          - listitem [ref=f18e38]:
+            - link " 角色管理" [ref=f18e39] [cursor=pointer]:
+              - /url: /user/player
+              - generic [ref=f18e40]: 
+              - paragraph [ref=f18e41]: 角色管理
+          - listitem [ref=f18e42]:
+            - link " 我的举报" [ref=f18e43] [cursor=pointer]:
+              - /url: /user/reports
+              - generic [ref=f18e44]: 
+              - paragraph [ref=f18e45]: 我的举报
+          - listitem [ref=f18e46]:
+            - link " 个人资料" [ref=f18e47] [cursor=pointer]:
+              - /url: /user/profile
+              - generic [ref=f18e48]: 
+              - paragraph [ref=f18e49]: 个人资料
+          - listitem [ref=f18e50]:
+            - link " 高级功能 " [ref=f18e51] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=f18e52]: 
+              - paragraph [ref=f18e53]:
+                - text: 高级功能
+                - generic [ref=f18e54]: 
+            - text: 
+          - listitem [ref=f18e55]: 浏览
+          - listitem [ref=f18e56]:
+            - link " 皮肤库" [ref=f18e57] [cursor=pointer]:
+              - /url: /skinlib
+              - generic [ref=f18e58]: 
+              - paragraph [ref=f18e59]: 皮肤库
+          - listitem [ref=f18e60]: 管理
+          - listitem [ref=f18e61]:
+            - link " 管理面板" [ref=f18e62] [cursor=pointer]:
+              - /url: /admin
+              - generic [ref=f18e63]: 
+              - paragraph [ref=f18e64]: 管理面板
+  - generic [ref=f18e65]:
+    - heading "我的角色" [level=1] [ref=f18e70]
+    - generic [ref=f18e72]:
+      - generic [ref=f18e73]:
+        - heading "角色管理" [level=3] [ref=f18e74]
+        - button "添加角色" [ref=f18e75] [cursor=pointer]
+      - generic [ref=f18e79]:
+        - generic [ref=f18e80]: E2E_OAuth用户
+        - generic [ref=f18e81]: 08fe7084a22630a8a3584c0a46c0d476
+        - generic [ref=f18e82]: "皮肤: 未设置 · 披风: 未设置"
+        - generic [ref=f18e83]:
+          - button "设置材质" [ref=f18e84] [cursor=pointer]
+          - button "改名" [ref=f18e85] [cursor=pointer]
+          - button "删除" [ref=f18e86] [cursor=pointer]
+  - contentinfo [ref=f18e87]:
+    - generic [ref=f18e88]:
+      - link "津ICP备2025038348号" [ref=f18e89] [cursor=pointer]:
+        - /url: https://beian.miit.gov.cn
+      - text: "| Powered by Natayark Network"
+      - generic [ref=f18e90]:
+        - text: © 2024-2026
+        - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f18e91] [cursor=pointer]:
+          - /url: //www.zyghit.cn
+        - text: .
+      - text: All rights reserved.

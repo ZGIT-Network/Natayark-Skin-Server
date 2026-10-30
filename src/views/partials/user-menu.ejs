@@ -1,0 +1,31 @@
+<%
+  if (typeof t !== 'function') locals.t = function (key) { return key; };
+%>
+<div class="dropdown" data-dropdown>
+  <button type="button" class="btn btn-ghost btn-sm gap-2 px-1.5" data-dropdown-trigger aria-haspopup="menu" aria-expanded="false">
+    <span class="avatar size-8">
+      <img src="/avatar/user/<%= user.uid %>?v=4&size=64" alt="">
+    </span>
+    <span class="hidden max-w-32 truncate text-sm font-medium md:inline"><%= user.nickname || user.email %></span>
+    <%- icon('chevron-down', 'size-3 opacity-60 hidden sm:block') %>
+  </button>
+  <div class="dropdown-menu" data-dropdown-menu role="menu">
+    <div class="px-2.5 py-2">
+      <div class="truncate text-sm font-medium"><%= user.nickname || user.email %></div>
+      <div class="truncate text-xs text-muted-foreground"><%= user.email %></div>
+    </div>
+    <div class="dropdown-separator"></div>
+    <a href="/user" class="dropdown-item" data-dropdown-item role="menuitem"><%- icon('layout-dashboard') %><span><%= t('general.user-center') %></span></a>
+    <a href="/user/profile" class="dropdown-item" data-dropdown-item role="menuitem"><%- icon('user-round') %><span><%= t('general.profile') %></span></a>
+    <a href="/user/connections" class="dropdown-item" data-dropdown-item role="menuitem"><%- icon('link') %><span><%= t('general.connections') %></span></a>
+    <% if (isAdmin) { %>
+    <div class="dropdown-separator"></div>
+    <a href="/admin" class="dropdown-item" data-dropdown-item role="menuitem"><%- icon('layout-dashboard') %><span><%= t('general.admin-panel') %></span></a>
+    <% } %>
+    <div class="dropdown-separator"></div>
+    <form method="post" action="/auth/logout">
+      <input type="hidden" name="csrf" value="<%= csrf %>">
+      <button type="submit" class="dropdown-item danger" role="menuitem"><%- icon('log-out') %><span><%= t('general.logout') %></span></button>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,8 @@
+﻿node_modules/
+dist/
+.env
+storage/
+artifacts/
+*.log
+.refs/
+.npm-cache/

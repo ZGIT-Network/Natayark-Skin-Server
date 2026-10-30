@@ -1,0 +1,110 @@
+<%- include('../partials/layout-user-top', { title: t('general.connections'), pageDescription: '管理第三方登录方式与已授权的应用。' }) %>
+
+<div class="grid gap-5 lg:grid-cols-3">
+  <section class="card lg:col-span-2">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">第三方登录</h2>
+        <p class="card-description">绑定后可以使用对应平台账号登录本站。</p>
+      </div>
+    </div>
+    <div class="card-content">
+      <% if (identities.length === 0 && providers.length === 0) { %>
+      <div class="empty-state">
+        
+        <div class="empty-state-title">站点暂未配置第三方登录方式</div>
+      </div>
+      <% } %>
+
+      <% if (identities.length > 0) { %>
+      <ul class="divide-y divide-border">
+        <% for (const identity of identities) { %>
+        <li class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+          <div class="flex items-center gap-3">
+            <div>
+              <div class="text-sm font-medium"><%= providers.find(p => p.key === identity.provider)?.displayName || identity.provider %></div>
+              <div class="text-xs text-muted-foreground"><%= identity.display_name || '已绑定' %></div>
+            </div>
+          </div>
+          <form method="post" action="/user/connections/<%= encodeURIComponent(identity.provider) %>/unlink" data-action="unlink-identity">
+            <input type="hidden" name="csrf" value="<%= csrf %>">
+            <button type="submit" class="btn btn-outline btn-sm text-destructive" <%= identity.canUnlink ? '' : 'disabled' %>><%= identity.canUnlink ? '解绑' : '保留登录方式' %></button>
+          </form>
+        </li>
+        <% } %>
+      </ul>
+      <% } %>
+
+      <% const unbound = providers.filter(p => !identities.some(i => i.provider === p.key)); %>
+      <% if (unbound.length > 0) { %>
+      <div class="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+        <% for (const provider of unbound) { %>
+        <form method="post" action="/user/connections/<%= encodeURIComponent(provider.key) %>/link">
+          <input type="hidden" name="csrf" value="<%= csrf %>">
+          <button class="btn btn-outline btn-sm" type="submit">绑定 <%= provider.displayName %></button>
+        </form>
+        <% } %>
+      </div>
+      <% } %>
+
+      <% if (!localLoginEnabled) { %>
+      <p class="mt-4 text-xs text-muted-foreground">本站已关闭邮箱密码登录，需保留至少一种可用的第三方登录方式。</p>
+      <% } else if (!hasPassword) { %>
+      <p class="mt-4 text-xs text-muted-foreground">解绑最后一种登录方式前，需先<a href="/auth/oauth/set-password" class="font-medium text-brand-strong hover:underline dark:text-brand">设置密码</a>。</p>
+      <% } %>
+    </div>
+  </section>
+
+  <aside class="space-y-5">
+    <section class="card">
+      <div class="card-header"><div><h2 class="card-title">Minecraft 正版验证</h2></div></div>
+      <div class="card-content">
+        <p class="text-sm text-muted-foreground">通过 Microsoft 登录验证 Java 版所有权。</p>
+        <a href="/user/verification" class="btn btn-outline btn-sm mt-3 w-full">前往验证</a>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<div class="mt-5">
+  <div class="mb-3 flex items-center justify-between gap-3">
+    <h2 class="text-base font-semibold">已授权的应用</h2>
+  </div>
+  <% if (grants.length === 0) { %>
+  <div class="card">
+    <div class="empty-state">
+      
+      <div class="empty-state-title">还没有应用获得授权</div>
+      <div class="empty-state-text">通过 Yggdrasil Connect 授权的应用会显示在这里。</div>
+    </div>
+  </div>
+  <% } else { %>
+  <div class="card overflow-hidden">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>应用</th><th>权限范围</th><th>授权时间</th><th class="text-right">操作</th></tr>
+        </thead>
+        <tbody>
+          <% for (const g of grants) { %>
+          <tr>
+            <td class="font-medium"><%= g.client?.name ?? ('客户端 #' + g.client?.id) %></td>
+            <td><code class="text-xs text-muted-foreground"><%= (g.scopes || []).join(' ') %></code></td>
+            <td class="text-muted-foreground"><%= g.grantedAt ? new Date(g.grantedAt * 1000).toLocaleString('zh-CN') : '—' %></td>
+            <td class="text-right">
+              <form method="post" action="/connect/grants/revoke" data-confirm="确认撤销对该应用的授权？该应用的所有令牌将被吊销。" data-confirm-danger>
+                <input type="hidden" name="csrf" value="<%= csrf %>">
+                <input type="hidden" name="client_id" value="<%= g.client?.id %>">
+                <button class="btn btn-ghost btn-sm text-destructive hover:bg-destructive/10 hover:text-destructive" type="submit">撤销</button>
+              </form>
+            </td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<%- include('../partials/layout-bottom') %>

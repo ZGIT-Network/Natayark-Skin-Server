@@ -1,0 +1,74 @@
+<%- include('../partials/layout-user-top', { title: t('general.player-manage'), scope: 'admin', pageDescription: '管理所有游戏角色及其材质。' }) %>
+
+<section class="card">
+  <div class="card-header">
+    <div><h2 class="card-title">角色</h2><p class="card-description">共 <%= total %> 个角色</p></div>
+    <form method="get" action="/admin/players" class="flex w-full gap-1.5 sm:w-72">
+      <div class="relative flex-1">
+        <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><%- icon('search') %></span>
+        <input type="text" name="keyword" class="input pl-8" placeholder="角色名 / UID" value="<%= keyword %>">
+      </div>
+      <button type="submit" class="btn btn-outline btn-icon" aria-label="搜索"><%- icon('search') %></button>
+    </form>
+  </div>
+  <% if (players.length === 0) { %>
+  <div class="empty-state"><div class="empty-state-title">没有找到角色</div></div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>PID</th><th>角色名</th><th>所属用户</th><th>皮肤</th><th>披风</th><th>最后修改</th><th class="text-right">操作</th></tr>
+      </thead>
+      <tbody>
+        <% for (const p of players) { %>
+        <tr>
+          <td><code class="text-xs"><%= p.pid %></code></td>
+          <td class="font-medium"><%= p.name %></td>
+          <td class="text-muted-foreground"><%= p.uid %> · <%= p.email ?? '—' %></td>
+          <td>#<%= p.tid_skin %></td>
+          <td>#<%= p.tid_cape %></td>
+          <td class="whitespace-nowrap text-xs text-muted-foreground"><%= p.last_modified %></td>
+          <td class="text-right whitespace-nowrap">
+            <button type="button" class="btn btn-outline btn-xs" data-action="admin-edit-player" data-pid="<%= p.pid %>" data-name="<%= p.name %>" data-uid="<%= p.uid %>" data-skin="<%= p.tid_skin %>" data-cape="<%= p.tid_cape %>"><%- icon('pencil') %>编辑</button>
+            <button type="button" class="btn btn-ghost btn-xs text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="admin-delete-player" data-pid="<%= p.pid %>"><%- icon('trash-2') %></button>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+  <% if (pages > 1) { %>
+  <div class="card-content pt-0">
+    <nav class="pagination" aria-label="分页">
+      <% for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) { %>
+      <a class="page-link <%= i === page ? 'active' : '' %>" href="/admin/players?page=<%= i %><%= keyword ? '&keyword=' + encodeURIComponent(keyword) : '' %>"><%= i %></a>
+      <% } %>
+    </nav>
+  </div>
+  <% } %>
+</section>
+
+<dialog class="dialog" id="dialog-edit-player">
+  <div class="dialog-header">
+    <h2 class="dialog-title">编辑角色 <span id="edit-player-pid" class="font-normal text-muted-foreground"></span></h2>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+  </div>
+  <div class="dialog-body">
+    <form data-action="admin-save-player" class="grid gap-4">
+      <label class="field"><span class="label">角色名</span><input class="input" name="name" required></label>
+      <label class="field"><span class="label">所属用户 UID</span><input class="input" name="uid" type="number" required></label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="field"><span class="label">皮肤 TID</span><input class="input" name="skin" type="number"><span class="field-hint">0 表示清除</span></label>
+        <label class="field"><span class="label">披风 TID</span><input class="input" name="cape" type="number"><span class="field-hint">0 表示清除</span></label>
+      </div>
+      <p class="hidden text-sm text-destructive" data-form-error></p>
+    </form>
+  </div>
+  <div class="dialog-footer">
+    <button type="button" class="btn btn-outline" data-dialog-close><%= t('common.cancel') %></button>
+    <button type="button" class="btn btn-primary" data-submit-form="admin-save-player"><%= t('common.save') %></button>
+  </div>
+</dialog>
+
+<%- include('../partials/layout-bottom') %>

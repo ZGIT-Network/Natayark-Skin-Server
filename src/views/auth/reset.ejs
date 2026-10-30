@@ -1,0 +1,30 @@
+<%- include('../partials/layout-auth-top', { authTitle: t('auth.reset-password'), authSubtitle: t('auth.reset-subtitle') }) %>
+
+<% if (error) { %>
+<div class="alert alert-destructive mb-4" role="alert">
+  <%- icon('alert-triangle') %>
+  <div><%= error %></div>
+</div>
+<% } %>
+
+<% if (valid) { %>
+<form method="post" action="/auth/reset/<%= uid %>" class="grid gap-4">
+  <input type="hidden" name="csrf" value="<%= csrf %>">
+  <input type="hidden" name="token" value="<%= token %>">
+  <label class="field">
+    <span class="label"><%= t('auth.password') %></span>
+    <input type="password" class="input" name="password" required autofocus autocomplete="new-password">
+  </label>
+  <label class="field">
+    <span class="label"><%= t('auth.confirm-password') %></span>
+    <input type="password" class="input" name="password_confirm" required autocomplete="new-password">
+  </label>
+  <button type="submit" class="btn btn-primary btn-lg w-full"><%= t('auth.reset-password') %></button>
+</form>
+<% } %>
+
+<p class="mt-4 text-center text-sm text-muted-foreground">
+  <a href="/auth/login" class="font-medium text-brand-strong hover:underline dark:text-brand"><%= t('general.login') %></a>
+</p>
+
+<%- include('../partials/layout-auth-bottom') %>

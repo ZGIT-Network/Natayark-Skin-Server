@@ -1,0 +1,63 @@
+<%- include('../partials/layout-user-top', { title: t('general.i18n'), scope: 'admin', pageDescription: '覆盖界面文案，无需修改代码。' }) %>
+
+<div class="grid gap-5 lg:grid-cols-3">
+  <section class="card">
+    <div class="card-header"><div><h2 class="card-title">新增翻译</h2></div></div>
+    <div class="card-content">
+      <form method="post" action="/admin/i18n" class="grid gap-4">
+        <input type="hidden" name="csrf" value="<%= csrf %>">
+        <label class="field"><span class="label">分组</span><input class="input" name="group" required maxlength="255" placeholder="common"></label>
+        <label class="field"><span class="label">键名</span><input class="input" name="key" required maxlength="255" placeholder="save"></label>
+        <label class="field"><span class="label">语言</span><input class="input" name="locale" value="<%= locale %>" required></label>
+        <label class="field"><span class="label">内容</span><textarea class="textarea" name="text" rows="4" required></textarea></label>
+        <button class="btn btn-primary" type="submit">添加翻译</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="lg:col-span-2">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 class="text-base font-semibold">已有覆盖</h2>
+        <p class="text-xs text-muted-foreground">共 <%= total %> 条 · <%= current_page %> / <%= last_page %></p>
+      </div>
+      <form method="get" class="flex gap-1.5">
+        <input type="text" name="locale" value="<%= locale %>" class="input h-8 w-28 text-xs" aria-label="语言">
+        <button type="submit" class="btn btn-outline btn-sm">切换语言</button>
+      </form>
+    </div>
+
+    <% if (data.length === 0) { %>
+    <div class="card"><div class="empty-state"><div class="empty-state-title">暂无翻译覆盖</div></div></div>
+    <% } else { %>
+    <div class="space-y-3">
+      <% for (const line of data) { %>
+      <form method="post" action="/admin/i18n/save" class="card">
+        <div class="card-content py-4">
+          <input type="hidden" name="csrf" value="<%= csrf %>">
+          <input type="hidden" name="id" value="<%= line.id %>">
+          <input type="hidden" name="locale" value="<%= locale %>">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <code class="text-xs text-muted-foreground"><%= line.group %>.<%= line.key %></code>
+            <span class="text-[0.7rem] text-muted-foreground">#<%= line.id %></span>
+          </div>
+          <textarea class="textarea" name="text" rows="2"><%= line.text[locale] ?? '' %></textarea>
+          <div class="mt-2 flex justify-end gap-1.5">
+            <button class="btn btn-outline btn-xs" type="submit">保存</button>
+            <button class="btn btn-ghost btn-xs text-destructive hover:bg-destructive/10 hover:text-destructive" type="submit" name="action" value="delete">删除覆盖</button>
+          </div>
+        </div>
+      </form>
+      <% } %>
+    </div>
+
+    <nav class="pagination mt-5" aria-label="分页">
+      <a class="page-link <%= current_page <= 1 ? 'pointer-events-none opacity-50' : '' %>" href="?page=<%= Math.max(1, current_page - 1) %>&locale=<%= encodeURIComponent(locale) %>"><%- icon('chevron-left', 'size-4') %></a>
+      <span class="px-3 text-xs text-muted-foreground"><%= current_page %> / <%= last_page %></span>
+      <a class="page-link <%= current_page >= last_page ? 'pointer-events-none opacity-50' : '' %>" href="?page=<%= Math.min(last_page, current_page + 1) %>&locale=<%= encodeURIComponent(locale) %>"><%- icon('chevron-right', 'size-4') %></a>
+    </nav>
+    <% } %>
+  </section>
+</div>
+
+<%- include('../partials/layout-bottom') %>

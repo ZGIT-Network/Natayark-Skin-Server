@@ -1,0 +1,263 @@
+<%- include('../partials/layout-user-top', { title: t('general.customize'), scope: 'admin', pageDescription: '配置站点、注册、积分、Yggdrasil 与登录方式。' }) %>
+
+<% if (saved) { %>
+<div class="alert alert-success mb-5" role="status" data-feedback-message="已保存。">
+  <%- icon('circle-check') %>
+  <div>已保存。</div>
+</div>
+<% } %>
+<% if (error) { %>
+<%
+  const errors = {
+    'providers-json': '第三方登录配置不是有效的 JSON。',
+    'providers-invalid': '第三方登录配置无效：请检查 key、显示名称、端点与客户端凭据。',
+    'local-login-required': '关闭邮箱密码登录前，至少需要配置一个第三方登录方式。',
+    'appearance-invalid': '外观设置无效，请检查颜色、首页样式和图片地址。',
+  };
+%>
+<div class="alert alert-destructive mb-5" role="alert">
+  <%- icon('alert-triangle') %>
+  <div><%= errors[error] || '保存失败，请检查配置。' %></div>
+</div>
+<% } %>
+
+<div class="tabs tabs-vertical" data-tabs>
+  <div class="tabs-list" role="tablist" aria-orientation="vertical">
+    <button type="button" class="tab-trigger" data-tab="basic" data-tab-hash role="tab">基本信息</button>
+    <button type="button" class="tab-trigger" data-tab="appearance" data-tab-hash role="tab"><%- icon('paintbrush') %>外观与首页</button>
+    <button type="button" class="tab-trigger" data-tab="register" role="tab">注册与角色</button>
+    <button type="button" class="tab-trigger" data-tab="score" role="tab">积分经济</button>
+    <button type="button" class="tab-trigger" data-tab="ygg" role="tab">Yggdrasil / OIDC</button>
+    <button type="button" class="tab-trigger" data-tab="oauth" role="tab">第三方登录</button>
+  </div>
+
+  <div class="min-w-0">
+    <form method="post" action="/admin/settings" id="settings-form">
+      <input type="hidden" name="csrf" value="<%= csrf %>">
+
+      <div class="tab-panel" data-tab-panel="basic">
+        <section class="card">
+          <div class="card-header"><div><h2 class="card-title">基本信息</h2></div></div>
+          <div class="card-content grid gap-4 sm:grid-cols-2">
+            <label class="field">
+              <span class="label">站点名称</span>
+              <input class="input" name="site_name" value="<%= values.site_name %>">
+            </label>
+            <label class="field">
+              <span class="label">站点 URL</span>
+              <input class="input" name="site_url" value="<%= values.site_url %>">
+              <span class="field-hint">包含协议，结尾不要加斜杠。</span>
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">站点描述</span>
+              <input class="input" name="site_description" value="<%= values.site_description %>">
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">版权文字（支持 HTML）</span>
+              <input class="input" name="copyright_text" value="<%= values.copyright_text %>">
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">首页公告（Markdown）</span>
+              <textarea class="textarea" name="announcement" rows="6"><%= values.announcement %></textarea>
+            </label>
+          </div>
+          <div class="card-footer"><button type="submit" class="btn btn-primary">保存设置</button></div>
+        </section>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="register" hidden>
+        <section class="card">
+          <div class="card-header"><div><h2 class="card-title">注册与角色</h2></div></div>
+          <div class="card-content grid gap-4 sm:grid-cols-2">
+            <label class="field">
+              <span class="label">角色名规则</span>
+              <span class="select-wrap">
+                <select class="select" name="player_name_rule">
+                  <% for (const [v, l] of [['official','official（仅字母数字下划线）'],['cjk','cjk（含中文）'],['utf8','utf8（宽松）'],['custom','custom（自定义正则）']]) { %>
+                  <option value="<%= v %>" <%= values.player_name_rule === v ? 'selected' : '' %>><%= l %></option>
+                  <% } %>
+                </select>
+              </span>
+            </label>
+            <label class="field">
+              <span class="label">自定义角色名正则</span>
+              <input class="input" name="custom_player_name_regexp" value="<%= values.custom_player_name_regexp %>">
+            </label>
+            <label class="field">
+              <span class="label">角色名最短长度</span>
+              <input class="input" name="player_name_length_min" type="number" value="<%= values.player_name_length_min %>">
+            </label>
+            <label class="field">
+              <span class="label">角色名最长长度</span>
+              <input class="input" name="player_name_length_max" type="number" value="<%= values.player_name_length_max %>">
+            </label>
+            <label class="field">
+              <span class="label">注册时同时创建角色</span>
+              <span class="select-wrap">
+                <select class="select" name="register_with_player_name">
+                  <option value="true" <%= values.register_with_player_name === 'true' ? 'selected' : '' %>>是</option>
+                  <option value="false" <%= values.register_with_player_name !== 'true' ? 'selected' : '' %>>否</option>
+                </select>
+              </span>
+            </label>
+            <label class="field">
+              <span class="label">每 IP 注册上限</span>
+              <input class="input" name="regs_per_ip" type="number" value="<%= values.regs_per_ip %>">
+            </label>
+            <label class="field">
+              <span class="label">注册初始积分</span>
+              <input class="input" name="user_initial_score" type="number" value="<%= values.user_initial_score %>">
+            </label>
+            <label class="field">
+              <span class="label">需要邮箱验证</span>
+              <span class="select-wrap">
+                <select class="select" name="require_verification">
+                  <option value="0" <%= values.require_verification === '0' ? 'selected' : '' %>>关闭</option>
+                  <option value="1" <%= values.require_verification !== '0' ? 'selected' : '' %>>开启</option>
+                </select>
+              </span>
+            </label>
+          </div>
+          <div class="card-footer"><button type="submit" class="btn btn-primary">保存设置</button></div>
+        </section>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="score" hidden>
+        <section class="card">
+          <div class="card-header"><div><h2 class="card-title">积分经济</h2></div></div>
+          <div class="card-content grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <label class="field"><span class="label">创建角色消耗</span><input class="input" name="score_per_player" type="number" value="<%= values.score_per_player %>"></label>
+            <label class="field"><span class="label">公开材质 / KB</span><input class="input" name="score_per_storage" type="number" value="<%= values.score_per_storage %>"></label>
+            <label class="field"><span class="label">私有材质 / KB</span><input class="input" name="private_score_per_storage" type="number" value="<%= values.private_score_per_storage %>"></label>
+            <label class="field"><span class="label">衣柜单件消耗</span><input class="input" name="score_per_closet_item" type="number" value="<%= values.score_per_closet_item %>"></label>
+            <label class="field"><span class="label">公开上传奖励</span><input class="input" name="score_award_per_texture" type="number" value="<%= values.score_award_per_texture %>"></label>
+            <label class="field"><span class="label">签到积分（min,max）</span><input class="input" name="sign_score" value="<%= values.sign_score %>"></label>
+            <label class="field">
+              <span class="label">删除材质退还积分</span>
+              <span class="select-wrap">
+                <select class="select" name="take_back_scores_after_deletion">
+                  <option value="true" <%= values.take_back_scores_after_deletion === 'true' ? 'selected' : '' %>>是</option>
+                  <option value="false" <%= values.take_back_scores_after_deletion !== 'true' ? 'selected' : '' %>>否</option>
+                </select>
+              </span>
+            </label>
+          </div>
+          <div class="card-footer"><button type="submit" class="btn btn-primary">保存设置</button></div>
+        </section>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="ygg" hidden>
+        <section class="card">
+          <div class="card-header"><div><h2 class="card-title">Yggdrasil / OIDC</h2><p class="card-description">启动器登录与 Yggdrasil Connect 提供方配置。</p></div></div>
+          <div class="card-content grid gap-4 sm:grid-cols-2">
+            <label class="field">
+              <span class="label">UUID 算法</span>
+              <span class="select-wrap">
+                <select class="select" name="ygg_uuid_algorithm">
+                  <option value="v3" <%= values.ygg_uuid_algorithm === 'v3' ? 'selected' : '' %>>v3（离线 UUID）</option>
+                  <option value="v4" <%= values.ygg_uuid_algorithm === 'v4' ? 'selected' : '' %>>v4（随机）</option>
+                </select>
+              </span>
+              <span class="field-hint">已有角色不受影响。</span>
+            </label>
+            <label class="field">
+              <span class="label">经典认证服务</span>
+              <span class="select-wrap">
+                <select class="select" name="ygg_disable_authserver">
+                  <option value="false" <%= values.ygg_disable_authserver !== 'true' ? 'selected' : '' %>>启用</option>
+                  <option value="true" <%= values.ygg_disable_authserver === 'true' ? 'selected' : '' %>>禁用</option>
+                </select>
+              </span>
+              <span class="field-hint">禁用后启动器只能通过 OIDC 设备码登录。</span>
+            </label>
+            <label class="field"><span class="label">访问令牌有效期（秒）</span><input class="input" name="ygg_token_expire_1" type="number" value="<%= values.ygg_token_expire_1 %>"></label>
+            <label class="field"><span class="label">令牌可刷新窗口（秒）</span><input class="input" name="ygg_token_expire_2" type="number" value="<%= values.ygg_token_expire_2 %>"></label>
+            <label class="field"><span class="label">每用户令牌上限</span><input class="input" name="ygg_tokens_limit" type="number" value="<%= values.ygg_tokens_limit %>"></label>
+            <label class="field"><span class="label">批量查询角色上限</span><input class="input" name="ygg_search_profile_max" type="number" value="<%= values.ygg_search_profile_max %>"></label>
+            <label class="field"><span class="label">皮肤域名</span><input class="input" name="ygg_skin_domain" value="<%= values.ygg_skin_domain %>"><span class="field-hint">逗号分隔，留空表示使用站点域名。</span></label>
+            <label class="field"><span class="label">OIDC Issuer</span><input class="input" name="ygg_connect_server_url" value="<%= values.ygg_connect_server_url %>"><span class="field-hint">留空表示使用站点 URL。</span></label>
+            <label class="field"><span class="label">公用应用 Client ID</span><input class="input" name="ygg_shared_client_id" value="<%= values.ygg_shared_client_id %>"><span class="field-hint">留空禁用。</span></label>
+            <label class="field"><span class="label">设备码有效期（秒）</span><input class="input" name="yggc_device_code_expire" type="number" value="<%= values.yggc_device_code_expire %>"></label>
+            <label class="field"><span class="label">材质上传上限（KB）</span><input class="input" name="max_upload_file_size" type="number" value="<%= values.max_upload_file_size %>"></label>
+            <label class="field">
+              <span class="label">允许下载原文件</span>
+              <span class="select-wrap">
+                <select class="select" name="allow_downloading_texture">
+                  <option value="0" <%= values.allow_downloading_texture !== '1' ? 'selected' : '' %>>关闭</option>
+                  <option value="1" <%= values.allow_downloading_texture === '1' ? 'selected' : '' %>>开启</option>
+                </select>
+              </span>
+            </label>
+          </div>
+          <div class="card-footer"><button type="submit" class="btn btn-primary">保存设置</button></div>
+        </section>
+      </div>
+    </form>
+
+    <%- include('appearance') %>
+
+    <div class="tab-panel" data-tab-panel="oauth" hidden>
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">登录方式</h2>
+            <p class="card-description">关闭邮箱密码登录后，用户只能通过第三方账号进入本站。</p>
+          </div>
+        </div>
+        <div class="card-content">
+          <form method="post" action="/admin/settings" class="flex flex-wrap items-center gap-3">
+            <input type="hidden" name="csrf" value="<%= csrf %>">
+            <input type="hidden" name="local_login_enabled" id="local-login-value" value="<%= values.local_login_enabled === 'false' ? 'false' : 'true' %>">
+            <label class="switch" data-switch data-switch-target="#local-login-value">
+              <input type="checkbox" <%= values.local_login_enabled !== 'false' ? 'checked' : '' %> aria-label="允许邮箱密码登录">
+            </label>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium">允许邮箱密码登录</div>
+              <div class="text-xs text-muted-foreground">关闭前请确保至少配置了一个第三方登录方式。</div>
+            </div>
+            <button type="submit" class="btn btn-outline">保存登录方式</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="card mt-5">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">第三方 OAuth 客户端</h2>
+            <p class="card-description">密钥支持 <code class="rounded bg-muted px-1 py-0.5 text-xs">${ENV_VAR}</code> 环境变量引用。</p>
+          </div>
+        </div>
+        <div class="card-content">
+          <% if (providers.length) { %>
+          <div class="mb-4 grid gap-2">
+            <% for (const provider of providers) { %>
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+              <div class="min-w-0">
+                <div class="text-sm font-medium"><%= provider.displayName %> <span class="font-mono text-xs text-muted-foreground"><%= provider.key %></span></div>
+                <div class="truncate text-xs text-muted-foreground">回调：<%= siteUrl %>/auth/login/<%= provider.key %>/callback</div>
+              </div>
+              <span class="badge badge-success">已启用</span>
+            </div>
+            <% } %>
+          </div>
+          <% } %>
+
+          <form method="post" action="/admin/settings">
+            <input type="hidden" name="csrf" value="<%= csrf %>">
+            <input type="hidden" name="action" value="providers">
+            <label class="field">
+              <span class="label">配置 JSON</span>
+              <textarea class="textarea font-mono text-xs" name="providers" rows="16" spellcheck="false"><%= JSON.stringify(providers, null, 2) %></textarea>
+              <span class="field-hint">数组格式。Natayark ID 预设：授权 /oauth2/authorize，令牌 /api/oauth2/token，用户信息 /api/api/user/data。</span>
+            </label>
+            <div class="mt-4 flex justify-end">
+              <button type="submit" class="btn btn-primary">保存登录方式</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/layout-bottom') %>

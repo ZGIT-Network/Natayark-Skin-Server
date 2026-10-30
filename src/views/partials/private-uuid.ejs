@@ -1,0 +1,7 @@
+<span class="private-identifier" data-private-identifier data-uuid-url="<%= uuidUrl %>">
+  <code data-private-value><%= maskUuid(uuidValue) %></code>
+  <% if (uuidValue) { %>
+  <button type="button" class="btn btn-ghost btn-icon btn-xs" data-private-toggle aria-label="显示完整 UUID" aria-pressed="false"><%- icon('eye') %></button>
+  <button type="button" class="btn btn-ghost btn-icon btn-xs" data-private-copy aria-label="复制完整 UUID"><%- icon('copy') %></button>
+  <% } %>
+</span>

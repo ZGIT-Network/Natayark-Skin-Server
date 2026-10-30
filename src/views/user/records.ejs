@@ -1,0 +1,25 @@
+<%- include('../partials/layout-user-top', { title: typeof title !== 'undefined' ? title : '记录' }) %>
+
+<% if (!rows.length) { %>
+<div class="card">
+  <div class="empty-state">
+    
+    <div class="empty-state-title">暂无记录</div>
+  </div>
+</div>
+<% } else { %>
+<div class="card overflow-hidden">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><% for (const key of Object.keys(rows[0])) { %><th><%= key %></th><% } %></tr></thead>
+      <tbody>
+        <% for (const row of rows) { %>
+        <tr><% for (const value of Object.values(row)) { %><td><%= value ?? '—' %></td><% } %></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<%- include('../partials/layout-bottom') %>

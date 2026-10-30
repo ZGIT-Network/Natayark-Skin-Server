@@ -1,0 +1,5 @@
+<% if (typeof copyrightText !== 'undefined' && copyrightText) { %>
+<%- copyrightText %>
+<% } else { %>
+Copyright © <%= new Date().getFullYear() %> <a href="/"><%= typeof siteName !== 'undefined' ? siteName : 'Natayark SkinServer' %></a>. All rights reserved.
+<% } %>

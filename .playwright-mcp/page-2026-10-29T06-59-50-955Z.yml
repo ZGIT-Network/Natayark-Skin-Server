@@ -1,0 +1,54 @@
+- generic [active] [ref=f12e1]:
+  - link "跳至主要内容" [ref=f12e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=f12e3]:
+    - generic [ref=f12e4]:
+      - link "Natayark Skin SKIN & IDENTITY" [ref=f12e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f12e7]:
+          - text: Natayark Skin
+          - generic [ref=f12e8]: SKIN & IDENTITY
+      - navigation "主导航" [ref=f12e9]:
+        - link "皮肤库" [ref=f12e10] [cursor=pointer]:
+          - /url: /skinlib
+        - link "客户端配置" [ref=f12e11] [cursor=pointer]:
+          - /url: /user/config
+      - generic [ref=f12e12]:
+        - link "登录" [ref=f12e13] [cursor=pointer]:
+          - /url: /auth/login
+        - link "注册" [ref=f12e14] [cursor=pointer]:
+          - /url: /auth/register
+  - main [ref=f12e15]:
+    - generic [ref=f12e16]:
+      - paragraph [ref=f12e17]: 第三方注册
+      - heading "完善账户信息" [level=1] [ref=f12e18]
+      - paragraph [ref=f12e19]: 确认邮箱和角色信息后创建本站账户。已有账户请先登录，再在登录方式中绑定。
+      - generic [ref=f12e20]:
+        - generic [ref=f12e21]:
+          - generic [ref=f12e22]: 邮箱
+          - textbox "邮箱" [ref=f12e23]: e2e-oauth@example.com
+        - generic [ref=f12e24]:
+          - generic [ref=f12e25]: 游戏角色名
+          - textbox "游戏角色名" [ref=f12e26]
+          - paragraph [ref=f12e27]: 注册时免费创建首个角色，昵称与角色名一致。
+        - button "确认并继续" [ref=f12e28] [cursor=pointer]
+      - link "返回登录" [ref=f12e29] [cursor=pointer]:
+        - /url: /auth/login
+  - contentinfo [ref=f12e30]:
+    - generic [ref=f12e31]:
+      - generic [ref=f12e32]: Natayark Skin
+      - generic [ref=f12e33]:
+        - link "津ICP备2025038348号" [ref=f12e34] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn
+        - text: "| Powered by Natayark Network"
+        - generic [ref=f12e35]:
+          - text: © 2024-2026
+          - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=f12e36] [cursor=pointer]:
+            - /url: //www.zyghit.cn
+          - text: .
+        - text: All rights reserved.
+      - generic [ref=f12e37]:
+        - link "Yggdrasil API" [ref=f12e38] [cursor=pointer]:
+          - /url: /api/yggdrasil
+        - link "客户端配置" [ref=f12e39] [cursor=pointer]:
+          - /url: /user/config

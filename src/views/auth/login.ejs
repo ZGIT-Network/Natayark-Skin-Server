@@ -1,0 +1,66 @@
+<%- include('../partials/layout-auth-top', { authTitle: t('auth.login-title'), authSubtitle: t('auth.login-subtitle') }) %>
+
+<% if (error) { %>
+<div class="alert alert-destructive mb-4" role="alert">
+  <%- icon('alert-triangle') %>
+  <div><%= error %></div>
+</div>
+<% } %>
+
+<% if (!localLoginEnabled && !oauthProviders.length) { %>
+<div class="alert alert-destructive" role="alert">
+  <%- icon('alert-triangle') %>
+  <div><%= t('auth.no-provider') %></div>
+</div>
+<% } else { %>
+
+<% if (!localLoginEnabled) { %>
+<div class="alert alert-info mb-4" role="status">
+  <%- icon('info') %>
+  <div>
+    <div class="alert-title"><%= t('auth.oauth-only') %></div>
+    <div class="alert-description"><%= t('auth.oauth-only-hint') %></div>
+  </div>
+</div>
+<% } %>
+
+<% if (localLoginEnabled) { %>
+<form method="post" action="/auth/login" class="grid gap-4">
+  <input type="hidden" name="csrf" value="<%= csrf %>">
+  <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' ? redirect : '' %>">
+  <label class="field">
+    <span class="label"><%= t('auth.email') %></span>
+    <input type="email" class="input" id="email" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>" placeholder="you@example.com" required autofocus autocomplete="username">
+  </label>
+  <label class="field">
+    <span class="label"><%= t('auth.password') %></span>
+    <input type="password" class="input" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+  </label>
+  <button type="submit" class="btn btn-primary btn-lg w-full"><%= t('general.login') %></button>
+</form>
+
+<div class="mt-4 flex items-center justify-between text-sm">
+  <a href="/auth/forgot" class="text-muted-foreground transition-colors hover:text-foreground"><%= t('auth.forgot') %></a>
+  <% if (typeof registrationEnabled !== 'undefined' && registrationEnabled) { %>
+  <a href="/auth/register" class="font-medium text-brand-strong hover:underline dark:text-brand"><%= t('general.register') %></a>
+  <% } %>
+</div>
+<% } %>
+
+<% if (oauthProviders.length) { %>
+<div class="auth-divider"><%= t('auth.or') %></div>
+<div class="grid gap-2">
+  <% for (const p of oauthProviders) { %>
+  <a class="btn btn-outline btn-lg w-full justify-center" href="/auth/login/<%= encodeURIComponent(p.key) %><%= typeof redirect !== 'undefined' && redirect ? '?redirect=' + encodeURIComponent(redirect) : '' %>">
+    <span><%= t('auth.oauth-continues') %> <%= p.displayName %></span>
+  </a>
+  <% } %>
+</div>
+<% if (!localLoginEnabled && typeof registrationEnabled !== 'undefined' && registrationEnabled) { %>
+<p class="mt-4 text-center text-xs text-muted-foreground">首次使用时将自动创建账户。</p>
+<% } %>
+<% } %>
+
+<% } %>
+
+<%- include('../partials/layout-auth-bottom') %>

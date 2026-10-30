@@ -1,0 +1,22 @@
+<%
+  if (typeof t !== 'function') locals.t = function (key) { return key; };
+  const __path = typeof currentPath !== 'undefined' ? currentPath : '/';
+  const __locale = typeof locale !== 'undefined' ? locale : 'zh_CN';
+%>
+<div class="dropdown" data-dropdown>
+  <button type="button" class="btn btn-ghost btn-sm" data-dropdown-trigger aria-haspopup="menu" aria-expanded="false">
+    <%- icon('globe') %>
+    <span class="hidden sm:inline"><%= __locale === 'en' ? 'English' : '简体中文' %></span>
+    <%- icon('chevron-down', 'size-3 opacity-60') %>
+  </button>
+  <div class="dropdown-menu" data-dropdown-menu role="menu">
+    <a href="<%= __path %>?lang=zh_CN" class="dropdown-item" data-dropdown-item role="menuitem">
+      <span class="flex-1">简体中文</span>
+      <% if (__locale !== 'en') { %><%- icon('check', 'size-4 dropdown-check') %><% } %>
+    </a>
+    <a href="<%= __path %>?lang=en" class="dropdown-item" data-dropdown-item role="menuitem">
+      <span class="flex-1">English</span>
+      <% if (__locale === 'en') { %><%- icon('check', 'size-4 dropdown-check') %><% } %>
+    </a>
+  </div>
+</div>

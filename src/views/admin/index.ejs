@@ -1,0 +1,56 @@
+<%- include('../partials/layout-user-top', { title: t('general.admin-panel'), scope: 'admin', pageDescription: '站点运行概览与最近活动。' }) %>
+
+<div class="overview-stats">
+  <a href="/admin/users" class="stat-card">
+    <div><div class="stat-label">用户</div><div class="stat-value"><%= stats.users %></div></div>
+  </a>
+  <a href="/admin/players" class="stat-card">
+    <div><div class="stat-label">角色</div><div class="stat-value"><%= stats.players %></div></div>
+  </a>
+  <a href="/admin/textures" class="stat-card">
+    <div><div class="stat-label">材质</div><div class="stat-value"><%= stats.textures %></div></div>
+  </a>
+  <a href="/admin/reports" class="stat-card">
+    <div><div class="stat-label">举报处理</div><div class="stat-value">查看</div></div>
+  </a>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+  <section class="card lg:col-span-2">
+    <div class="card-header">
+      <div><h2 class="card-title">最近的 Yggdrasil 活动</h2></div>
+      <a href="/admin/ygg-log" class="btn btn-ghost btn-sm">查看全部<%- icon('arrow-right', 'size-3') %></a>
+    </div>
+    <% if (lastLog.length === 0) { %>
+    <div class="empty-state"><div class="empty-state-title">暂无记录</div></div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>时间</th><th>动作</th><th>用户</th><th>IP</th></tr></thead>
+        <tbody>
+          <% for (const log of lastLog) { %>
+          <tr>
+            <td class="whitespace-nowrap text-muted-foreground"><%= log.time %></td>
+            <td><code class="text-xs"><%= log.action %></code></td>
+            <td><%= log.user_id || '—' %></td>
+            <td><code class="text-xs text-muted-foreground"><%= log.ip %></code></td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><div><h2 class="card-title">快捷入口</h2></div></div>
+    <div class="card-content grid gap-2">
+      <a href="/admin/settings" class="btn btn-outline justify-start">站点设置</a>
+      <a href="/admin/clients" class="btn btn-outline justify-start">OAuth / OIDC 客户端</a>
+      <a href="/admin/translations" class="btn btn-outline justify-start">语言覆盖</a>
+      <a href="/admin/ygg-log" class="btn btn-outline justify-start">Yggdrasil 日志</a>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/layout-bottom') %>

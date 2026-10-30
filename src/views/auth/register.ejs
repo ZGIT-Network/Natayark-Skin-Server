@@ -1,0 +1,46 @@
+<%- include('../partials/layout-auth-top', { authTitle: t('auth.register-title'), authSubtitle: t('auth.register-subtitle') }) %>
+
+<% if (error) { %>
+<div class="alert alert-destructive mb-4" role="alert">
+  <%- icon('alert-triangle') %>
+  <div><%= error %></div>
+</div>
+<% } %>
+
+<form method="post" action="/auth/register" class="grid gap-4">
+  <input type="hidden" name="csrf" value="<%= csrf %>">
+  <% if (share) { %><input type="hidden" name="share" value="<%= share %>"><% } %>
+  <label class="field">
+    <span class="label"><%= t('auth.email') %></span>
+    <input type="email" class="input" name="email" value="<%= typeof values !== 'undefined' ? values.email || '' : '' %>" placeholder="you@example.com" required autofocus autocomplete="email">
+  </label>
+  <label class="field">
+    <span class="label"><%= t('auth.nickname') %></span>
+    <input type="text" class="input" name="nickname" value="<%= typeof values !== 'undefined' ? values.nickname || '' : '' %>" maxlength="50" autocomplete="nickname">
+  </label>
+  <% if (registerWithPlayerName) { %>
+  <label class="field">
+    <span class="label"><%= t('auth.player-name') %></span>
+    <input type="text" class="input" name="player_name" value="<%= typeof values !== 'undefined' ? values.player_name || '' : '' %>" required>
+    <span class="field-hint">将同时创建第一个游戏角色。</span>
+  </label>
+  <% } %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <label class="field">
+      <span class="label"><%= t('auth.password') %></span>
+      <input type="password" class="input" name="password" required autocomplete="new-password">
+    </label>
+    <label class="field">
+      <span class="label"><%= t('auth.confirm-password') %></span>
+      <input type="password" class="input" name="password_confirm" required autocomplete="new-password">
+    </label>
+  </div>
+  <button type="submit" class="btn btn-primary btn-lg w-full"><%= t('general.register') %></button>
+</form>
+
+<p class="mt-4 text-center text-sm text-muted-foreground">
+  <%= t('auth.has-account') %>
+  <a href="/auth/login" class="font-medium text-brand-strong hover:underline dark:text-brand"><%= t('general.login') %></a>
+</p>
+
+<%- include('../partials/layout-auth-bottom') %>

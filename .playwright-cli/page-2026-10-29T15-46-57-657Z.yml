@@ -1,0 +1,37 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Natayark SkinServer" [ref=e4] [cursor=pointer]:
+      - /url: /
+    - button "外观模式" [ref=e6] [cursor=pointer]
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - heading "登录到皮肤站" [level=1] [ref=e15]
+      - paragraph [ref=e16]: 使用你的账户继续
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: 邮箱
+        - textbox "邮箱" [active] [ref=e20]:
+          - /placeholder: you@example.com
+      - generic [ref=e21]:
+        - generic [ref=e22]: 密码
+        - textbox "密码" [ref=e23]:
+          - /placeholder: ••••••••
+      - button "登录" [ref=e24] [cursor=pointer]
+    - generic [ref=e25]:
+      - link "找回密码" [ref=e26] [cursor=pointer]:
+        - /url: /auth/forgot
+      - link "注册" [ref=e27] [cursor=pointer]:
+        - /url: /auth/register
+    - generic [ref=e28]: 或
+    - link "使用以下方式继续 Natayark ID" [ref=e30] [cursor=pointer]:
+      - /url: /auth/login/natayarkid?redirect=%2Fuser
+  - paragraph [ref=e32]:
+    - link "津ICP备2025038348号" [ref=e33] [cursor=pointer]:
+      - /url: https://beian.miit.gov.cn
+    - text: "| Powered by Natayark Network"
+    - generic [ref=e34]:
+      - text: © 2024-2026
+      - link "Zhiyuan Guanghui Information Technology (Tianjin) Co,.ltd" [ref=e35] [cursor=pointer]:
+        - /url: //www.zyghit.cn
+      - text: .
+    - text: All rights reserved.

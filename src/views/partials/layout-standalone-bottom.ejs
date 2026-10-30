@@ -1,0 +1,15 @@
+      </div>
+    </div>
+    <p class="mt-6 text-center text-xs text-muted-foreground"><%- include('copyright') %></p>
+  </div>
+<script>
+  window.__CSRF = <%- JSON.stringify(typeof csrf !== 'undefined' ? csrf : '') %>;
+  window.__USER_ID = <%- JSON.stringify(typeof user !== 'undefined' && user ? user.uid : 0) %>;
+</script>
+<script src="/js/ui.js"></script>
+<script src="/js/app.js"></script>
+<% if (typeof customJs !== 'undefined' && customJs) { %>
+<script><%- customJs %></script>
+<% } %>
+</body>
+</html>

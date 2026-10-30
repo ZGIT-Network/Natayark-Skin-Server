@@ -1,0 +1,45 @@
+<%- include('../partials/layout-user-top', { title: t('general.report-manage'), scope: 'admin', pageDescription: '审核用户提交的材质举报。' }) %>
+
+<% if (reports.length === 0) { %>
+<div class="card">
+  <div class="empty-state">
+    
+    <div class="empty-state-title">没有待处理的举报</div>
+  </div>
+</div>
+<% } else { %>
+<section class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>ID</th><th>材质</th><th>举报者</th><th>被举报者</th><th>理由</th><th>状态</th><th class="text-right">操作</th></tr>
+      </thead>
+      <tbody>
+        <% const statusMap = { 0: ['待处理', 'badge-warning'], 1: ['已同意', 'badge-success'], 2: ['已驳回', 'badge-secondary'] }; %>
+        <% for (const r of reports) { %>
+        <tr>
+          <td><code class="text-xs"><%= r.id %></code></td>
+          <td class="max-w-48 truncate">
+            <% if (r.texture_name) { %>
+            <a href="/skinlib/show/<%= r.tid %>" class="font-medium text-brand-strong hover:underline dark:text-brand">#<%= r.tid %> <%= r.texture_name %></a>
+            <% } else { %><span class="text-muted-foreground">已删除</span><% } %>
+          </td>
+          <td class="text-muted-foreground">UID <%= r.reporter %></td>
+          <td class="text-muted-foreground">UID <%= r.uploader %></td>
+          <td class="max-w-64"><span class="line-clamp-2"><%= r.reason %></span></td>
+          <td><span class="badge <%= (statusMap[r.status] || statusMap[0])[1] %>"><%= (statusMap[r.status] || statusMap[0])[0] %></span></td>
+          <td class="text-right whitespace-nowrap">
+            <% if (r.status === 0) { %>
+            <button type="button" class="btn btn-destructive btn-xs" data-action="review-report" data-id="<%= r.id %>" data-approve="1"><%- icon('check') %>同意并删除</button>
+            <button type="button" class="btn btn-outline btn-xs" data-action="review-report" data-id="<%= r.id %>" data-approve="0"><%- icon('check') %>驳回</button>
+            <% } %>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<%- include('../partials/layout-bottom') %>
