@@ -21,6 +21,7 @@ const DEFAULTS: Record<string, string> = {
   favicon_url: '',
   home_pic_url: '',
   content_policy: '',
+  textures_description_limit: '0',
 
   player_name_rule: 'utf8',
   custom_player_name_regexp: '',

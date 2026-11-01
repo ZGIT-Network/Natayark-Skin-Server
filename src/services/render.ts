@@ -3,13 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readTextureFile, textureExists } from './texture.js';
 import { ROOT_DIR } from '../config.js';
+import { parsePng } from './png.js';
 
 /**
- * Server-side texture rendering, ported from blessing/texture-renderer
- * (SkinRenderer / Point / Polygon) so previews and avatars match the legacy
- * PHP site's orthographic composition, per-texel quads, painter's display order
- * and 2x supersampling. Slim arm UVs and HD overlays fix defects in the old port
- * and agree with the interactive skinview3d model.
+ * Independent server-side Minecraft texture rasterizer. Orthographic projection,
+ * per-texel quads, depth ordering and 2x supersampling produce static previews.
+ * Slim arm UVs and HD overlays agree with the interactive skinview3d model.
  */
 
 type RGBA = [number, number, number, number];
@@ -19,16 +18,6 @@ type Quad = { p: Pt[]; color: RGBA; face: FaceName };
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-/** Parse a PNG, tolerating trailing bytes after IEND (GD accepted such files). */
-function parsePng(data: Buffer): PNG {
-  const iend = data.indexOf(Buffer.from('IEND', 'ascii'));
-  if (iend !== -1 && iend + 8 <= data.length) {
-    try {
-      return PNG.sync.read(data.subarray(0, iend + 8));
-    } catch { /* fall through to the strict read */ }
-  }
-  return PNG.sync.read(data);
-}
 /** Orthographic projection from Point::project(). */
 function project(x: number, y: number, z: number, ca: number, sa: number, cw: number, sw: number): Pt {
   return [x * cw + z * sw, x * sa * sw + y * ca - z * sa * cw, -x * ca * sw + y * sa + z * ca * cw];

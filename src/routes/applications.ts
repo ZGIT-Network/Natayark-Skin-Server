@@ -4,6 +4,19 @@ import { query, queryOne, exec, withTransaction } from '../db.js';
 import { createClient } from '../services/oidc.js';
 import { issueAccessToken, getSystemClientId, revokeTokenRow, safeParseScopes } from '../services/token.js';
 import { pageContext } from './page-context.js';
+import { isAdmin } from '../services/user.js';
+
+const USER_SCOPES = {
+  'User.Read':'读取账户资料','Player.Read':'读取角色','Player.ReadWrite':'管理角色',
+  'Closet.Read':'读取衣柜','Closet.ReadWrite':'管理衣柜','Notification.Read':'读取站内通知','Notification.ReadWrite':'发送站内通知（需管理员）',
+};
+const ADMIN_SCOPES = {
+  'UsersManagement.Read':'读取用户列表','UsersManagement.ReadWrite':'管理用户',
+  'PlayersManagement.Read':'读取全站角色','PlayersManagement.ReadWrite':'管理全站角色',
+  'ClosetManagement.Read':'读取用户衣柜','ClosetManagement.ReadWrite':'管理用户衣柜',
+  'ReportsManagement.Read':'读取举报','ReportsManagement.ReadWrite':'审核举报',
+};
+const scopesFor = (user:any) => Object.entries({...USER_SCOPES,...(isAdmin(user) ? ADMIN_SCOPES : {})}).map(([id,description])=>({id,description}));
 
 export function validateRedirects(input: unknown): string[] | null {
   const redirects=String(input??'').split(/[\r\n,]+/).map(s=>s.trim()).filter(Boolean);
@@ -30,7 +43,7 @@ export async function registerApplicationRoutes(app: FastifyInstance): Promise<v
     if(!await guard(request,reply))return;
     const clients=await query('SELECT id,name,secret,redirect FROM oauth_clients WHERE user_id = ? AND revoked = 0',[request.currentUser!.uid]);
     const tokens=await query('SELECT id,name,scopes,created_at,expires_at FROM oauth_access_tokens WHERE user_id = ? AND revoked = 0 AND name = ?',[request.currentUser!.uid,'Personal Access Token']);
-    return reply.view('user/applications',{...(await pageContext(request,'开发者应用')),clients,tokens});
+    return reply.view('user/applications',{...(await pageContext(request,'开发者应用')),clients,tokens:tokens.map((token:any)=>({...token,scopes:safeParseScopes(token.scopes)})),availableScopes:scopesFor(request.currentUser)});
   });
   const list=async(request:any,reply:any)=>await guard(request,reply)?query('SELECT id,name,secret,redirect,created_at,updated_at FROM oauth_clients WHERE user_id = ? AND revoked = 0',[request.currentUser!.uid]):undefined;
   app.get('/oauth/clients',list);
@@ -57,16 +70,17 @@ export async function registerApplicationRoutes(app: FastifyInstance): Promise<v
   app.post('/oauth/personal-access-tokens',async(request,reply)=>{
     if(!await guard(request,reply))return;
     const body=request.body as any??{},scopes=Array.isArray(body.scopes)?body.scopes:[];
-    const allowed=['User.Read','Player.Read','Player.ReadWrite','Closet.Read','Closet.ReadWrite','Notification.Read','Notification.ReadWrite'];
+    const allowed=scopesFor(request.currentUser).map(scope=>scope.id);
     if(!scopes.length||scopes.some((s:any)=>!allowed.includes(s)))return fail(reply,400,'权限范围无效');
     const token=await issueAccessToken({userId:request.currentUser!.uid,clientId:await getSystemClientId(),scopes});
     await exec('UPDATE oauth_access_tokens SET name = ? WHERE id = ?',['Personal Access Token',token.jti]);
-    return{code:0,accessToken:token.jwt,token:{id:token.jti,name:String(body.name??'个人令牌').slice(0,100),scopes}};
+    reply.header('Cache-Control','private, no-store');
+    return{code:0,accessToken:token.jwt,token:{id:token.jti,name:'Personal Access Token',scopes}};
   });
   app.delete('/oauth/personal-access-tokens/:id',async(request,reply)=>{
     if(!await guard(request,reply))return;
     const row=await queryOne<any>('SELECT id FROM oauth_access_tokens WHERE id = ? AND user_id = ? AND name = ?',[(request.params as any).id,request.currentUser!.uid,'Personal Access Token']);
     if(!row)return fail(reply,404,'令牌不存在');await revokeTokenRow(row.id);return{code:0,message:'已撤销令牌'};
   });
-  app.get('/oauth/scopes',async(request,reply)=>await guard(request,reply)?['User.Read','Player.Read','Player.ReadWrite','Closet.Read','Closet.ReadWrite','Notification.Read','Notification.ReadWrite'].map(id=>({id,description:id})):undefined);
+  app.get('/oauth/scopes',async(request,reply)=>await guard(request,reply)?scopesFor(request.currentUser):undefined);
 }

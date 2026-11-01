@@ -4,12 +4,8 @@ import { getOption, getOptionInt } from './option.js';
 
 export type RegistrationLink = { id: number; sharer: number; code: string; created_at: string; updated_at: string; url: string };
 
-export async function sharingEnabled(): Promise<boolean> {
-  try {
-    const plugins = JSON.parse(await getOption('plugins_enabled', '{}'));
-    return Array.isArray(plugins) ? plugins.includes('share-registration-link') : Object.hasOwn(plugins, 'share-registration-link');
-  } catch { return false; }
-}
+import { pluginEnabled } from './plugins.js';
+export const sharingEnabled = () => pluginEnabled('share-registration-link');
 
 async function withUrl(record: Omit<RegistrationLink, 'url'>): Promise<RegistrationLink> {
   const origin = (await getOption('site_url', '')).replace(/\/+$/, '');

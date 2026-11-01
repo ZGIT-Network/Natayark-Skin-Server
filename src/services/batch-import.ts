@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { PNG } from 'pngjs';
+import { parsePng } from './png.js';
 import { queryOne, insert, nowString, withTransaction } from '../db.js';
 import { saveTextureFile, validateTexturePng, type Texture } from './texture.js';
 import { sha256Hex } from '../util.js';
@@ -47,7 +48,7 @@ export async function batchImportTextures(options: BatchImportOptions): Promise<
       const hash = sha256Hex(data);
       if (seen.has(hash)) { result.status = 'duplicate'; continue; }
       seen.add(hash);
-      const type: Texture['type'] = options.cape ? 'cape' : isAlexTexture(PNG.sync.read(data)) ? 'alex' : 'steve';
+      const type: Texture['type'] = options.cape ? 'cape' : isAlexTexture(parsePng(data)) ? 'alex' : 'steve';
       result.type = type;
       await withTransaction(async () => {
         const existing = await queryOne<{ tid: number }>('SELECT tid FROM textures WHERE hash = ? LIMIT 1 FOR UPDATE', [hash]);

@@ -84,13 +84,22 @@ export async function loadPlayerNameRules(): Promise<void> {
   optionPlayerNameLengthMax = parseInt(await getOption('player_name_length_max', '16'), 10) || 16;
 }
 
-function safeRegex(source: string): RegExp {
-  try {
-    return new RegExp(source, 'u');
-  } catch {
-    return /[^\0]/;
+export function compileLegacyPattern(input:string):RegExp|null {
+  let source=input,flags='u';
+  if(input.length>2&&['/','#','~','!','%'].includes(input[0])){
+    const end=input.lastIndexOf(input[0]);
+    if(end<=0)return null;
+    source=input.slice(1,end);const modifiers=input.slice(end+1);
+    if(/[^imsuAD]/.test(modifiers))return null;
+    flags=[...new Set(('u'+modifiers.replace(/[AD]/g,'')).split(''))].join('');
+    if(modifiers.includes('A'))source='^(?:'+source+')';
+    if(modifiers.includes('D')&&source.endsWith('$'))source=source.slice(0,-1)+'$(?![\\s\\S])';
   }
+  try {
+    return new RegExp(source,flags);
+  }catch{return null;}
 }
+const safeRegex=(source:string)=>compileLegacyPattern(source)??/(?!)/;
 
 export function escapeHtml(s: unknown): string {
   return String(s ?? '')

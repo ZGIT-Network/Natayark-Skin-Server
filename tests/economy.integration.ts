@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
+import {fixtureSchema} from './fixture-schema.js';
 import { PNG } from 'pngjs';
 import Fastify from 'fastify';
 
-// Each invocation gets schema-only copies. Original tables are read only by LIKE;
-// not a single existing account, option or image is used as a test fixture.
+// Each invocation gets empty tables from the distributable schema;
+// existing accounts, options and images are never used as test fixtures.
 const suffix = crypto.randomBytes(4).toString('hex');
 const prefix = `test_econ_${suffix}_`;
 process.env.DB_TABLE_PREFIX = prefix;
@@ -45,9 +46,8 @@ async function upload(uid: number, isPublic = true, data = image()) {
 
 try {
   for (const table of tables) {
-    // namespacedSql rewrites the target after TABLE, while LIKE reads only the
-    // original schema. Identifiers come solely from this fixed table list.
-    await exec(`CREATE TABLE \`${table}\` LIKE \`${table}\``);
+    // The fixed fixture schema and namespace are independent of existing tables.
+    await exec(fixtureSchema(table));
     created.push(table);
   }
   for (const [key, value] of Object.entries({ score_per_storage: '3', private_score_per_storage: '25', score_per_closet_item: '2', score_award_per_texture: '20', score_award_per_like: '5', return_score: '1', take_back_scores_after_deletion: '1', max_upload_file_size: '1024', plugins_enabled: '{}', score_per_player: '100', ygg_uuid_algorithm: 'v3' })) await setOption(key, value);
@@ -131,7 +131,10 @@ try {
   const usm = await app.inject(`/usm/skin${suffix}.json`);
   check(usm.statusCode === 200 && usm.json().skins.default === uploaded.texture.hash && Number.isInteger(usm.json().last_update), 'USM provides skin hash and Unix last_update');
   check((await app.inject(`/skin/skin${suffix}.png`)).statusCode === 200 && (await app.inject(`/cape/skin${suffix}.png`)).statusCode === 404, 'legacy PNG routes resolve the player skin and missing cape');
-  check((await app.inject(`/avatar/user/${other}`)).headers.location?.startsWith('https://weavatar.com/avatar/'), 'enabled Gravatar provider redirects unconfigured avatar');
+  check((await app.inject(`/avatar/user/${other}`)).statusCode===200, 'equipped skin takes priority over enabled Gravatar provider');
+  await exec('UPDATE players SET tid_skin=0 WHERE pid=?',[pid]);
+  check((await app.inject(`/avatar/user/${other}`)).headers.location?.startsWith('https://weavatar.com/avatar/'), 'enabled Gravatar provider is a fallback when no skin is equipped');
+  await exec('UPDATE players SET tid_skin=? WHERE pid=?',[uploaded.texture.tid,pid]);
   check((await app.inject('/user/config')).statusCode === 302, 'configuration download requires a logged-in user');
   const downloaded = await app.inject({ url: '/user/config?download=csl', headers: { 'x-test-uid': String(other) } });
   check(downloaded.statusCode === 200 && downloaded.headers['content-disposition'] === 'attachment; filename="CustomSkinLoader.json"' && downloaded.json().loadlist[0].type === 'CustomSkinAPI', 'CSL configuration download preserves site-first ordering and attachment name');

@@ -3,6 +3,8 @@ import { getOption, getOptionBool, getOptionInt } from './option.js';
 import { validatePlayerName } from '../util.js';
 import { allocateUuid, deleteUuidRecordsByName, renameUuidRecord } from './uuid.js';
 import type { Texture } from './texture.js';
+import { queueProfileRefresh } from './integrations.js';
+import { pluginEnabled } from './plugins.js';
 
 export type Player = {
   pid: number;
@@ -46,12 +48,7 @@ export async function bindSinglePlayer(uid: number, name: string): Promise<AddPl
   return createPlayer(uid, name, true);
 }
 
-export async function singlePlayerLimitEnabled(): Promise<boolean> {
-  try {
-    const plugins = JSON.parse(await getOption('plugins_enabled', '{}'));
-    return Array.isArray(plugins) ? plugins.includes('single-player-limit') : Object.hasOwn(plugins, 'single-player-limit');
-  } catch { return false; }
-}
+export const singlePlayerLimitEnabled = () => pluginEnabled('single-player-limit');
 
 async function createPlayer(uid: number, name: string, initialBinding: boolean): Promise<AddPlayerResult> {
   const trimmed = name.trim();
@@ -83,6 +80,7 @@ export async function renamePlayer(player: Player, newName: string): Promise<{ o
     if (dup && dup.pid !== current.pid) return { ok: false, reason: 'dup_name' as const };
     const { getUuidByName } = await import('./uuid.js');
     const uuid = await getUuidByName(current.name);
+    await queueProfileRefresh(current.name,trimmed);
     await exec('UPDATE players SET name = ?, last_modified = ? WHERE pid = ?', [trimmed, nowString(), current.pid]);
     if (uuid) await renameUuidRecord(uuid, trimmed);
     else await allocateUuid(trimmed);
@@ -99,6 +97,7 @@ export async function deletePlayer(player: Player, options: { bypassLimit?: bool
   // Admin deletion in PlayersManagementController never refunds the owner.
   const refund = !options.bypassLimit && await getOptionBool('return_score', false) ? await getOptionInt('score_per_player', 100) : 0;
   await withTransaction(async () => {
+    await queueProfileRefresh(player.name);
     await queryOne('SELECT uid FROM users WHERE uid = ? FOR UPDATE', [player.uid]);
     const current = await queryOne<Player>('SELECT * FROM players WHERE pid = ? FOR UPDATE', [player.pid]);
     if (!current) return;
@@ -113,6 +112,7 @@ export async function setPlayerTexture(player: Player, type: 'skin' | 'cape', ti
   await withTransaction(async () => {
     const texture = await queryOne<Texture>('SELECT * FROM textures WHERE tid = ? FOR UPDATE', [tid]);
     if (!texture || (type === 'cape') !== (texture.type === 'cape')) throw Object.assign(new Error('材质不存在或类型不符'), { statusCode: 400 });
+    await queueProfileRefresh(player.name);
     await exec(`UPDATE players SET ${column} = ?, last_modified = ? WHERE pid = ?`, [tid, nowString(), player.pid]);
   });
 }
@@ -120,6 +120,7 @@ export async function setPlayerTexture(player: Player, type: 'skin' | 'cape', ti
 export async function clearPlayerTexture(player: Player, type: 'skin' | 'cape'): Promise<void> {
   const column = type === 'skin' ? 'tid_skin' : 'tid_cape';
   await exec(`UPDATE players SET ${column} = 0, last_modified = ? WHERE pid = ?`, [nowString(), player.pid]);
+  await queueProfileRefresh(player.name);
 }
 
 /** Load skin/cape textures for players in bulk. */

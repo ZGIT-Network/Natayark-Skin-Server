@@ -1,40 +1,6 @@
-<%- include('../partials/layout-user-top', { title: t('general.my-closet'), pageDescription: '收藏的材质会出现在角色材质选择器中。' }) %>
-
-<div class="mb-5 flex items-center justify-between gap-3">
-  <p class="text-sm text-muted-foreground">共 <%= closet.length %> 件材质</p>
-  <a href="/skinlib" class="btn btn-outline btn-sm">去皮肤库添加</a>
-</div>
-
-<% if (closet.length === 0) { %>
-<div class="card">
-  <div class="empty-state">
-    
-    <div class="empty-state-title">衣柜还是空的</div>
-    <div class="empty-state-text">在皮肤库中点击「收藏到衣柜」即可添加。</div>
-    <a href="/skinlib" class="btn btn-primary btn-sm">浏览皮肤库</a>
-  </div>
-</div>
-<% } else { %>
-<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-  <% for (const item of closet) { %>
-  <article class="texture-card" data-closet-item="<%= item.tid %>">
-    <a href="/skinlib/show/<%= item.tid %>" class="texture-preview min-h-40">
-      <img src="/preview/<%= item.tid %>?v=4&model=<%= item.type %>&size=160" alt="<%= item.item_name %>" loading="lazy">
-    </a>
-    <div class="flex flex-1 flex-col p-3">
-      <div class="flex items-start justify-between gap-2">
-        <a href="/skinlib/show/<%= item.tid %>" class="min-w-0 flex-1 truncate text-sm font-medium hover:underline" title="<%= item.item_name %>"><%= item.item_name %></a>
-        <span class="badge badge-outline"><%= item.type === 'cape' ? '披风' : (item.type === 'alex' ? 'Alex' : 'Steve') %></span>
-      </div>
-      <div class="mt-1 text-[0.7rem] text-muted-foreground">#<%= item.tid %> · <%= item.public ? '公开' : '私有' %></div>
-      <div class="mt-3 flex gap-1.5">
-        <button type="button" class="btn btn-outline btn-xs flex-1" data-action="rename-closet" data-tid="<%= item.tid %>" data-name="<%= item.item_name %>"><%- icon('pencil') %>改名</button>
-        <button type="button" class="btn btn-ghost btn-xs text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="remove-closet" data-tid="<%= item.tid %>"><%- icon('trash-2') %></button>
-      </div>
-    </div>
-  </article>
-  <% } %>
-</div>
-<% } %>
-
+<%- include('../partials/layout-user-top', { title: t('general.my-closet'), pageDescription: '收藏并整理喜欢的材质，在角色管理中应用。' }) %>
+<div class="closet-toolbar"><form class="library-search" method="get"><select class="select" name="type" aria-label="材质类型"><% for (const [key,label] of [['','全部类型'],['skin','皮肤'],['cape','披风'],['steve','Steve'],['alex','Alex']]) { %><option value="<%= key %>" <%= type === key ? 'selected' : '' %>><%= label %></option><% } %></select><input class="input" name="q" value="<%= keyword %>" placeholder="搜索衣柜名称" aria-label="搜索衣柜"><button class="btn btn-primary btn-icon" aria-label="搜索"><%- icon('search') %></button></form><a href="/skinlib" class="btn btn-outline btn-sm"><%- icon('plus') %>添加材质</a></div>
+<p class="text-sm text-muted-foreground mb-4">共 <%= total %> 件材质</p>
+<%- include('../partials/closet-grid',{manageUid:0}) %>
+<%- include('../partials/pagination',{path:'/user/closet',query:{q:keyword,type}}) %>
 <%- include('../partials/layout-bottom') %>

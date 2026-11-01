@@ -4,9 +4,15 @@ import { withTransaction } from '../db.js';
 export const APPEARANCE_DEFAULTS = {
   theme_primary: '#335cdb', theme_primary_dark: '#9bb7ff',
   theme_background: '#f4f6fb', theme_background_dark: '#111725',
-  theme_default_mode: 'system', home_layout: 'split', home_show_recent: 'true',
+  theme_default_mode: 'system', theme_radius: 'small', home_layout: 'split', home_show_recent: 'true',
 };
 export type Appearance = typeof APPEARANCE_DEFAULTS;
+export const RADIUS_PRESETS = [
+  { key: 'square', name: '直角', pixels: 0 },
+  { key: 'small', name: '小圆角', pixels: 4 },
+  { key: 'medium', name: '中圆角', pixels: 8 },
+  { key: 'large', name: '大圆角', pixels: 12 },
+] as const;
 export const HOME_LAYOUTS = [
   { key: 'split', name: '分栏', description: '文字与图片并排，展示最近上传的材质。' },
   { key: 'classic', name: '经典大图', description: '背景大图与居中标题，接近经典皮肤站首页。' },
@@ -21,14 +27,16 @@ export const PALETTES = [
 ];
 export function isColor(value: unknown): value is string { return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value); }
 export function isThemeMode(value: unknown): value is 'system' | 'light' | 'dark' { return ['system', 'light', 'dark'].includes(String(value)); }
+export function isRadiusPreset(value: unknown): value is typeof RADIUS_PRESETS[number]['key'] { return RADIUS_PRESETS.some(preset => preset.key === value); }
 export function isHomeLayout(value: unknown): value is typeof HOME_LAYOUTS[number]['key'] { return HOME_LAYOUTS.some(layout => layout.key === value); }
 
 export async function appearanceSettings(): Promise<Appearance> {
   const values = { ...APPEARANCE_DEFAULTS };
   for (const key of Object.keys(values) as Array<keyof Appearance>) {
     const value = await getOption(key, values[key]);
-    if (key.startsWith('theme_') && key !== 'theme_default_mode' && !isColor(value)) continue;
+    if (key.startsWith('theme_') && !['theme_default_mode', 'theme_radius'].includes(key) && !isColor(value)) continue;
     if (key === 'theme_default_mode' && !isThemeMode(value)) continue;
+    if (key === 'theme_radius' && !isRadiusPreset(value)) continue;
     if (key === 'home_layout' && !isHomeLayout(value)) continue;
     if (key === 'home_show_recent' && !['true', 'false'].includes(value)) continue;
     values[key] = value;
@@ -41,8 +49,9 @@ export function parseAppearance(body: Record<string, unknown>, current: Appearan
   for (const key of Object.keys(next) as Array<keyof Appearance>) {
     if (body[key] === undefined) continue;
     const value = String(body[key]).trim();
-    if (key.startsWith('theme_') && key !== 'theme_default_mode' && !isColor(value)) return null;
+    if (key.startsWith('theme_') && !['theme_default_mode', 'theme_radius'].includes(key) && !isColor(value)) return null;
     if (key === 'theme_default_mode' && !isThemeMode(value)) return null;
+    if (key === 'theme_radius' && !isRadiusPreset(value)) return null;
     if (key === 'home_layout' && !isHomeLayout(value)) return null;
     if (key === 'home_show_recent' && !['true', 'false'].includes(value)) return null;
     next[key] = key.startsWith('theme_') ? value.toLowerCase() : value;
@@ -97,7 +106,11 @@ export function paletteVariables(primary: string, background: string): Record<st
 }
 export function appearanceCss(settings: Appearance): string {
   const rule = (selector: string, variables: Record<string, string>) => `${selector}{${Object.entries(variables).map(([key, value]) => `--${key}:${value}`).join(';')}}`;
-  return rule(':root', paletteVariables(settings.theme_primary, settings.theme_background)) + rule(':root.dark', paletteVariables(settings.theme_primary_dark, settings.theme_background_dark));
+  const radius = (RADIUS_PRESETS.find(preset => preset.key === settings.theme_radius) ?? RADIUS_PRESETS[1]).pixels;
+  return rule(':root', {
+    ...paletteVariables(settings.theme_primary, settings.theme_background),
+    radius: `${radius}px`, 'control-radius-sm': `${radius / 2}px`, 'control-radius-md': `${radius * 0.75}px`,
+  }) + rule(':root.dark', paletteVariables(settings.theme_primary_dark, settings.theme_background_dark));
 }
 export async function themeContext() {
   const appearance = await appearanceSettings();

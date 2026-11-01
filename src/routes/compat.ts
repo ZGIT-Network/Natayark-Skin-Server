@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import {config} from '../config.js';
+import {compileSearch,SearchError,type SearchEntity} from '../services/search.js';
 import type { FastifyInstance } from 'fastify';
 import { query, queryOne, exec, nowString, withTransaction, insert } from '../db.js';
 import { getOption, getOptionInt, getOptionBool } from '../services/option.js';
@@ -6,6 +8,11 @@ import { isAdmin } from '../services/user.js';
 import { pageContext as sharedPageContext } from './page-context.js';
 import { listPlayersOfUser, bindSinglePlayer, findPlayerByPid, clearPlayerTexture } from '../services/player.js';
 import { closetOf, closetAdd, closetRemove, findTextureByTid, skinlibSearch, textureNameValid, getDescription, setDescription } from '../services/texture.js';
+import { setPlayerTexture } from '../services/player.js';
+import { findUserByUid } from '../services/user.js';
+import { renderMarkdown, validateDescription } from '../services/content.js';
+import { notificationInbox, notificationView, readNotification, sendSiteNotification, pageNumber } from '../services/site-data.js';
+import { queueTextureProfileRefresh } from '../services/integrations.js';
 
 export function captureApiHandlers(app: FastifyInstance): Map<string, any> {
   const routes = new Map<string, any>();
@@ -33,14 +40,30 @@ export async function registerCompatRoutes(app: FastifyInstance, handlers: Map<s
       alias(method,url.replace('/api/player','/user/player'),url);
     }
     if (url.startsWith('/api/closet')) alias(method,url.replace('/api/closet','/user/closet'),url);
-    if (url.startsWith('/api/skinlib') && !url.endsWith('/report')) alias(method,url.replace('/api/skinlib','/texture'),url);
+    if (url.startsWith('/api/skinlib') && !url.endsWith('/report') && !url.endsWith('/description')) alias(method,url.replace('/api/skinlib','/texture'),url);
   }
   for (const prefix of ['/admin','/api/admin']) {
     for (const field of ['email','verification','nickname','password','score','permission']) alias('PUT',`${prefix}/users/:uid/${field}`,'/api/admin/user/:uid',r=>{
       const body=r.body??{};r.body={...body,field:field==='verification'?'verified':field,value:body.value??body[field]??(field==='verification'?body.verified:'')};
     });
     alias('DELETE',`${prefix}/users/:uid`,'/api/admin/user/:uid');
-    for (const field of ['name','owner']) alias('PUT',`${prefix}/players/:pid/${field}`,'/api/admin/player/:pid',r=>{const body=r.body??{};r.body={...body,field,value:body.value??body[field]};});
+    for (const field of ['name','owner']) alias('PUT',`${prefix}/players/:pid/${field}`,'/api/admin/player/:pid',r=>{const body=r.body??{};r.body={...body,field,value:body.value??(field==='name'?body.player_name:body.uid)??body[field]};});
+    app.put(`${prefix}/players/:pid/textures`,{config:{legacyWrite:true} as any},async(request,reply)=>{
+      if(!isAdmin(request.currentUser))return fail(reply,403,'需要管理员权限');
+      const body=request.body as any??{};
+      if(!request.checkCsrf(body.csrf))return fail(reply,403,'CSRF 校验失败');
+      const player=await findPlayerByPid(Number((request.params as any).pid));
+      if(!player)return fail(reply,404,'角色不存在');
+      const tid=Number(body.tid),type=body.type;
+      if(!['skin','cape'].includes(type)||!Number.isSafeInteger(tid)||tid<0)return fail(reply,422,'请选择材质类型与有效的 TID');
+      if(tid===0)await clearPlayerTexture(player,type);
+      else{
+        const texture=await findTextureByTid(tid);
+        if(!texture||(type==='cape')!==(texture.type==='cape'))return fail(reply,422,'材质不存在或类型不符');
+        await setPlayerTexture(player,type,tid);
+      }
+      return{code:0,message:'角色材质已更新'};
+    });
     alias('DELETE',`${prefix}/players/:pid`,'/api/admin/player/:pid');
     alias('PUT',`${prefix}/reports/:id`,'/api/admin/report/:id/review');
   }
@@ -55,7 +78,9 @@ export async function registerCompatRoutes(app: FastifyInstance, handlers: Map<s
   const closet=async(request:any,reply:any)=>{
     if(!request.currentUser)return fail(reply,401,'请先登录');
     const items=await closetOf(request.currentUser.uid), q=request.query??{};
-    return items.filter(i=>(!q.type||i.type===q.type||q.type==='skin'&&i.type!=='cape')&&(!q.q||i.item_name.toLowerCase().includes(String(q.q).toLowerCase())));
+    const type=q.type??q.category??'skin', page=pageNumber(q.page), perPage=pageNumber(q.perPage??q.per_page,6,100);
+    const filtered=items.filter(i=>(type==='all'||i.type===type||type==='skin'&&i.type!=='cape')&&(!q.q||i.item_name.toLowerCase().includes(String(q.q).toLowerCase())));
+    return {data:filtered.slice((page-1)*perPage,page*perPage),total:filtered.length,current_page:page,per_page:perPage,last_page:Math.max(1,Math.ceil(filtered.length/perPage))};
   };
   app.get('/api/closet',closet); app.get('/user/closet/list',closet);
   app.get('/user/closet/ids',async(request,reply)=>request.currentUser?(await closetOf(request.currentUser.uid)).map(i=>i.tid):fail(reply,401,'请先登录'));
@@ -71,14 +96,45 @@ export async function registerCompatRoutes(app: FastifyInstance, handlers: Map<s
   });
 
   const textureInfo=async(request:any,reply:any)=>{
+    reply.header('Cache-Control','private, no-store');
     const item=await findTextureByTid(Number(request.params.tid));
     if(!item)return fail(reply,404,'材质不存在');
-    if(!item.public&&item.uploader!==request.currentUser?.uid&&!isAdmin(request.currentUser))return fail(reply,403,'无权访问私有材质');
+    if(!item.public&&item.uploader!==request.currentUser?.uid&&!isAdmin(request.currentUser)){
+      const hidden=await getOptionInt('status_code_for_private',403)===404;
+      return fail(reply,hidden?404:403,hidden?'材质不存在':'无权访问私有材质');
+    }
     return {...item,description:await getDescription(item.tid)};
   };
   app.get('/texture/:tid',textureInfo); app.get('/skinlib/info/:tid',textureInfo);
+  for(const prefix of ['/texture','/api/textures']){
+    app.get(`${prefix}/:tid/description`,{config:{publicApi:true} as any},async(request,reply)=>{
+      reply.header('Cache-Control','private, no-store');
+      const texture=await findTextureByTid(Number((request.params as any).tid));
+      if(!texture)return fail(reply,404,'材质不存在');
+      if(!texture.public&&texture.uploader!==request.currentUser?.uid&&!isAdmin(request.currentUser)){
+        const hidden=await getOptionInt('status_code_for_private',403)===404;
+        return fail(reply,hidden?404:403,hidden?'材质不存在':'无权访问该材质');
+      }
+      const description=await getDescription(texture.tid);
+      if(Object.hasOwn(request.query as object,'raw'))return reply.type('text/markdown; charset=utf-8').send(description);
+      return reply.type('text/html; charset=utf-8').send(renderMarkdown(description));
+    });
+    app.put(`${prefix}/:tid/description`,{config:{legacyWrite:true} as any},async(request,reply)=>{
+      const body=request.body as any??{};
+      if(!request.checkCsrf(body.csrf))return fail(reply,403,'CSRF 校验失败');
+      const texture=await findTextureByTid(Number((request.params as any).tid));
+      if(!texture)return fail(reply,404,'材质不存在');
+      if(texture.uploader!==request.currentUser?.uid&&!isAdmin(request.currentUser))return fail(reply,403,'无权修改该材质');
+      let description:string;
+      try{description=await validateDescription(body.description);}catch(error:any){return fail(reply,422,error.message);}
+      await setDescription(texture.tid,description);
+      return reply.type('text/html; charset=utf-8').send(renderMarkdown(description));
+    });
+  }
   app.get('/skinlib/list',async request=>{
-    const q=request.query as any;return skinlibSearch({keyword:String(q.q??q.keyword??'').slice(0,100),type:q.type,status:q.status,sort:q.sort,page:Math.max(1,Number(q.page)||1),perPage:Math.min(100,Math.max(1,Number(q.per_page)||18)),viewer:request.currentUser?{uid:request.currentUser.uid,admin:isAdmin(request.currentUser)}:null});
+    const q=request.query as any,page=pageNumber(q.page),perPage=pageNumber(q.per_page,20,100);
+    const result=await skinlibSearch({keyword:String(q.q??q.keyword??'').slice(0,100),type:q.filter??q.type??'skin',status:q.status,sort:q.sort,uploader:pageNumber(q.uploader,0),page,perPage,viewer:request.currentUser?{uid:request.currentUser.uid,admin:isAdmin(request.currentUser)}:null});
+    return {...result,data:result.items.map((item:any)=>({...item,nickname:item.uploader_name})),current_page:page,per_page:perPage,last_page:Math.max(1,Math.ceil(result.total/perPage))};
   });
   for(const field of ['name','type'])app.put(`/texture/:tid/${field}`,{config:{legacyWrite:true} as any},async(request,reply)=>{
     const body=request.body as any??{};
@@ -95,44 +151,67 @@ export async function registerCompatRoutes(app: FastifyInstance, handlers: Map<s
       if(!data||!(await validateTexturePng(data,body.type,body.type==='alex')).ok)return fail(reply,400,'图片不支持此模型');
       await exec('UPDATE textures SET type = ? WHERE tid = ?',[body.type,texture.tid]);
       await exec('UPDATE players SET last_modified = ? WHERE tid_skin = ?',[nowString(),texture.tid]);
+      await queueTextureProfileRefresh(texture.tid);
     }else await setDescription(texture.tid,String(body.description??'').slice(0,65535));
     return {code:0,message:'已更新'};
   });
 
   const paginate=async(table:string,select:string,where:string,params:any[],request:any)=>{
-    const page=Math.max(1,Number(request.query?.page)||1),perPage=Math.min(100,Math.max(1,Number(request.query?.per_page)||20));
-    const count=await queryOne<any>(`SELECT COUNT(*) AS total FROM ${table} ${where}`,params);
+    const page=pageNumber(request.query?.page),perPage=pageNumber(request.query?.per_page,20,100);
+    const count=await queryOne<any>(`SELECT COUNT(*) AS total FROM ${table} ${where.replace(/ ORDER BY .+$/i,'')}`,params);
     const data=await query(`SELECT ${select} FROM ${table} ${where} LIMIT ? OFFSET ?`,[...params,perPage,(page-1)*perPage]);
     return {data,total:count?.total??0,current_page:page,per_page:perPage,last_page:Math.max(1,Math.ceil((count?.total??0)/perPage))};
   };
   for(const [name,table,select]of [['users','users','uid,email,nickname,score,avatar,permission,verified,register_at,last_sign_at'],['players','players','*'],['reports','reports','*']]){
-    const list=async(request:any,reply:any)=>isAdmin(request.currentUser)?paginate(table,select,'',[],request):fail(reply,403,'需要管理员权限');
+    const list=async(request:any,reply:any)=>{
+      if(!isAdmin(request.currentUser))return fail(reply,403,'需要管理员权限');
+      try{
+        const expression=String(request.query?.q??request.query?.keyword??'').trim();
+        const search=compileSearch(name as SearchEntity,expression,{numericIds:request.query?.q===undefined,timezone:config.tz});
+        const projection=search.fields?search.fields.map(field=>'`'+field+'`').join(','):select;
+        // As in Eloquent paginate(), endpoint pagination overrides SearchString limit/from.
+        return await paginate(table,projection,search.where+' ORDER BY '+search.orderBy,search.params,request);
+      }catch(error){if(error instanceof SearchError)return fail(reply,422,error.message);throw error;}
+    };
     app.get(`/api/admin/${name}`,list);app.get(`/admin/${name}/list`,list);
   }
-  for(const method of ['GET','POST','DELETE'] as const)app.route({method,url:'/api/admin/closet/:uid',handler:async(request,reply)=>{
+  for(const path of ['/api/admin/closet/:uid','/admin/closet/:uid'])for(const method of (path.startsWith('/api')?['GET','POST','DELETE']:['POST','DELETE']) as Array<'GET'|'POST'|'DELETE'>)app.route({method,url:path,config:{legacyWrite:method!=='GET'} as any,handler:async(request,reply)=>{
     if(!isAdmin(request.currentUser))return fail(reply,403,'需要管理员权限');
-    const uid=Number((request.params as any).uid);if(method==='GET')return closetOf(uid);
+    const uid=Number((request.params as any).uid);
+    if(!await findUserByUid(uid))return fail(reply,404,'用户不存在');
+    if(method==='GET')return closetOf(uid);
     const body=request.body as any??{};if(!request.checkCsrf(body.csrf))return fail(reply,403,'CSRF 校验失败');
-    if(method==='POST')return closetAdd(uid,Number(body.tid),String(body.name??''));
-    for(const tid of Array.isArray(body.tids)?body.tids:[body.tid])await closetRemove(uid,Number(tid));return{code:0,message:'已更新衣柜'};
+    if(method==='POST'){
+      const result=await closetAdd(uid,Number(body.tid),String(body.name??''));
+      if(!result.ok)return fail(reply,result.reason==='not_found'?404:400,({dup:'衣柜中已有该材质',lack_score:'用户积分不足',not_found:'材质不存在或不可访问'} as any)[result.reason!]);
+      return{code:0,message:'已添加到用户衣柜'};
+    }
+    const tids=(Array.isArray(body.tids)?body.tids:[body.tid]).map(Number);
+    if(!tids.length||tids.some((tid:number)=>!Number.isSafeInteger(tid)||tid<=0))return fail(reply,422,'请填写有效的 TID');
+    await withTransaction(async()=>{for(const tid of tids)await closetRemove(uid,tid);});return{code:0,message:'已更新衣柜'};
   }});
 
-  const notifications=async(request:any)=>paginate('notifications','id,type,data,read_at,created_at','WHERE notifiable_id = ? ORDER BY created_at DESC',[request.currentUser!.uid],request);
+  const notifications=async(request:any)=>{
+    const rows=await query<any>('SELECT id,data,read_at,created_at FROM notifications WHERE notifiable_id=? AND notifiable_type IN (?,?) AND read_at IS NULL ORDER BY created_at DESC',[request.currentUser!.uid,'App\\Models\\User','App\\User']);
+    return rows.map(notificationView).map(({id,title})=>({id,title}));
+  };
   app.get('/api/user/notifications',notifications);
   for(const path of ['/api/user/notifications/:id','/user/notifications/:id'])app.post(path,{config:{legacyWrite:true} as any},async(request,reply)=>{
     if(!request.checkCsrf((request.body as any)?.csrf))return fail(reply,403,'CSRF 校验失败');
     const id=(request.params as any).id;
-    await exec(`UPDATE notifications SET read_at = ? WHERE notifiable_id = ?${id==='all'?'':' AND id = ?'}`,[nowString(),request.currentUser!.uid,...(id==='all'?[]:[id])]);
-    return{code:0,message:'已标记为已读'};
+    if(id==='all'){
+      await exec('UPDATE notifications SET read_at=?,updated_at=? WHERE notifiable_id=? AND notifiable_type IN (?,?) AND read_at IS NULL',[nowString(),nowString(),request.currentUser!.uid,'App\\Models\\User','App\\User']);
+      return{code:0,message:'已全部标记为已读'};
+    }
+    const notification=await readNotification(request.currentUser!.uid,id);
+    if(!notification)return fail(reply,404,'通知不存在');
+    return{code:0,message:'已标记为已读',...notification};
   });
   const sendNotification=async(request:any,reply:any)=>{
     if(!isAdmin(request.currentUser))return fail(reply,403,'需要管理员权限');
     const body=request.body??{};if(!request.checkCsrf(body.csrf))return fail(reply,403,'CSRF 校验失败');
-    const message=String(body.message??body.content??'').slice(0,5000);if(!message)return fail(reply,400,'请填写通知内容');
-    const ids: number[]=(Array.isArray(body.users)?body.users:body.uid?[body.uid]:[]).map(Number);
-    if(!ids.length||ids.length>200)return fail(reply,400,'请选择 1–200 位用户');
-    await withTransaction(async()=>{for(const id of [...new Set(ids)])if(Number.isSafeInteger(id)&&id>0)await exec('INSERT INTO notifications (id,type,notifiable_type,notifiable_id,data,created_at,updated_at) VALUES (?,?,?,?,?,?,?)',[crypto.randomUUID(),'App\\Notifications\\SiteNotification','App\\Models\\User',id,JSON.stringify({title:String(body.title??'站内通知').slice(0,100),message}),nowString(),nowString()]);});
-    return{code:0,message:'通知已发送'};
+    try{return{code:0,message:'通知已发送',sent:await sendSiteNotification(body)};}
+    catch(error:any){return fail(reply,422,error.message);}
   };
   app.post('/api/admin/notifications',sendNotification);app.post('/admin/notifications/send',{config:{legacyWrite:true} as any},sendNotification);
 
@@ -151,8 +230,14 @@ export async function registerCompatRoutes(app: FastifyInstance, handlers: Map<s
   for(const name of ['notifications','reports','score-info'])app.get(`/user/${name}`,async(request,reply)=>{
     if(!request.currentUser)return reply.redirect('/auth/login');
     const title=({notifications:'站内通知',reports:'我的举报','score-info':'积分规则'}as any)[name];
-    const rows=name==='notifications'?(await notifications(request)).data:name==='reports'?await query('SELECT id,tid,reason,status,report_at FROM reports WHERE reporter = ? ORDER BY id DESC',[request.currentUser.uid]):await Promise.all(['score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','return_score','sign_score'].map(async key=>({规则:key,值:await getOption(key,'0')})));
-    return reply.view('user/records',{...await pageContext(request,title),rows});
+    const q=request.query as Record<string,string>,page=pageNumber(q.page);
+    if(name==='notifications')return reply.view('user/notifications',{...await pageContext(request,title),...await notificationInbox(request.currentUser.uid,page,q.filter==='unread'),filter:q.filter==='unread'?'unread':'all'});
+    if(name==='reports'){
+      const result=await paginate('reports r LEFT JOIN textures t ON t.tid=r.tid','r.id,r.tid,r.reason,r.status,r.report_at,t.name AS texture_name','WHERE r.reporter=? ORDER BY r.id DESC',[request.currentUser.uid],request);
+      return reply.view('user/reports',{...await pageContext(request,title),rows:result.data,page:result.current_page,pages:result.last_page,total:result.total});
+    }
+    const rules=Object.fromEntries(await Promise.all(['score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','reporter_score_modification','reporter_reward_score','return_score','sign_score','sign_gap_time','sign_after_zero'].map(async key=>[key,(await getOption(key))??'0'])));
+    return reply.view('user/score',{...await pageContext(request,title),rules});
   });
   app.put('/user/dark-mode',{config:{legacyWrite:true} as any},async(request,reply)=>{
     const body=request.body as any??{};if(!request.checkCsrf(body.csrf))return fail(reply,403,'CSRF 校验失败');
@@ -166,5 +251,5 @@ export async function registerCompatRoutes(app: FastifyInstance, handlers: Map<s
     await exec('UPDATE users SET avatar = ? WHERE uid = ?',[tid,request.currentUser!.uid]);return{code:0,message:'头像已更新'};
   });
   app.get('/.well-known/change-password',async(_request,reply)=>reply.redirect('/user/profile'));
-  app.get('/user/oauth/manage',async(_request,reply)=>reply.redirect('/user/connections'));
+  app.get('/user/oauth/manage',async(_request,reply)=>reply.redirect('/user/applications'));
 }

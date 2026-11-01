@@ -4,6 +4,8 @@ import { getOption, getOptionBool, getOptionLocalized } from '../services/option
 import { csrfToken } from '../services/session.js';
 import { isAdmin } from '../services/user.js';
 import { themeContext } from '../services/theme.js';
+import { pluginEnabled } from '../services/plugins.js';
+import { requestLocale,localeReturnTo } from '../services/locale.js';
 
 /**
  * Shared template context for every server-rendered page so partials can rely
@@ -12,10 +14,7 @@ import { themeContext } from '../services/theme.js';
 export async function pageContext(request: FastifyRequest, title: string): Promise<Record<string, any>> {
   const user = (request as any).currentUser;
   const darkMode = user?.is_dark_mode === 1;
-  const localeQuery = (request.query as any)?.lang;
-  const locale: 'zh_CN' | 'en' = localeQuery === 'en' || localeQuery === 'zh_CN'
-    ? localeQuery
-    : user?.locale === 'en' ? 'en' : 'zh_CN';
+  const locale = requestLocale(request);
   const pathname = String((request as any).url ?? '/').split('?')[0];
   return {
     ...(await themeContext()),
@@ -32,6 +31,8 @@ export async function pageContext(request: FastifyRequest, title: string): Promi
       isDarkMode: darkMode,
     } : null,
     hasPassword: !!user?.password,
+    hideAdvancedMenu: await pluginEnabled('hide-advanced-menu'),
+    hitokotoEnabled: await pluginEnabled('hitokoto'),
     isAdmin: isAdmin(user),
     siteName: await getOptionLocalized('site_name', locale),
     siteUrl: await getOption('site_url', ''),
@@ -44,10 +45,13 @@ export async function pageContext(request: FastifyRequest, title: string): Promi
     currentPath: pathname,
     darkMode,
     locale,
+    localeReturnTo:localeReturnTo(request.url),
     htmlLang: locale === 'en' ? 'en' : 'zh-CN',
     customCss: await getOption('custom_css', ''),
     customJs: await getOption('custom_js', ''),
     faviconUrl: await getOption('favicon_url', '/favicon.ico'),
+    recaptchaSiteKey: await getOption('recaptcha_sitekey',''),
+    recaptchaInvisible:await getOptionBool('recaptcha_invisible',false),
     t: (key: string) => (request as any).t(key),
   };
 }

@@ -15,6 +15,7 @@
           <label class="field"><span class="label"><%= label %></span><span class="color-field"><input type="color" name="<%= key %>" value="<%= appearance[key] %>" aria-label="<%= label %>"><code data-color-value="<%= key %>"><%= appearance[key] %></code></span></label>
           <% } %>
           <label class="field"><span class="label">访客默认模式</span><span class="select-wrap"><select class="select" name="theme_default_mode"><% for (const mode of ['system','light','dark']) { %><option value="<%= mode %>" <%= appearance.theme_default_mode === mode ? 'selected' : '' %>><%= t('theme.' + mode) %></option><% } %></select></span><span class="field-hint">访客可以在页头自行选择，首次访问默认跟随这里的设置。</span></label>
+          <label class="field"><span class="label">界面圆角</span><span class="select-wrap"><select class="select" name="theme_radius"><% for (const preset of radiusPresets) { %><option value="<%= preset.key %>" data-radius="<%= preset.pixels %>" <%= appearance.theme_radius === preset.key ? 'selected' : '' %>><%= preset.name %> · <%= preset.pixels %>px</option><% } %></select></span><span class="field-hint">卡片使用所选圆角，按钮和输入框按比例收小。下方可预览，保存后全站生效。</span></label>
         </div>
         <div class="appearance-samples">
           <% for (const mode of ['light', 'dark']) { %>

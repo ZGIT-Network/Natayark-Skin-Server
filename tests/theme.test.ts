@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { APPEARANCE_DEFAULTS, PALETTES, appearanceCss, contrast, isColor, paletteVariables, parseAppearance } from '../src/services/theme.js';
+import { APPEARANCE_DEFAULTS, PALETTES, RADIUS_PRESETS, appearanceCss, contrast, isColor, paletteVariables, parseAppearance } from '../src/services/theme.js';
 
 test('appearance rejects CSS injection and unsupported theme or layout values', () => {
   assert.equal(isColor('#abc123'), true);
   for (const value of ['red', '#fff', '#ffffff;display:none', '</style>', '#12xyz4']) assert.equal(isColor(value), false);
-  for (const body of [{ theme_primary: '</style>' }, { theme_default_mode: 'automatic' }, { home_layout: '../../etc' }, { home_show_recent: 'maybe' }]) assert.equal(parseAppearance(body, APPEARANCE_DEFAULTS), null);
+  for (const body of [{ theme_primary: '</style>' }, { theme_default_mode: 'automatic' }, { theme_radius: '999px' }, { theme_radius: '</style>' }, { home_layout: '../../etc' }, { home_show_recent: 'maybe' }]) assert.equal(parseAppearance(body, APPEARANCE_DEFAULTS), null);
   assert.equal(parseAppearance({ theme_primary: '#ABC123', home_layout: 'classic' }, APPEARANCE_DEFAULTS)?.theme_primary, '#abc123');
   assert.match(appearanceCss(APPEARANCE_DEFAULTS), /:root\.dark\{/);
+  for (const preset of RADIUS_PRESETS) {
+    const settings = parseAppearance({ theme_radius: preset.key }, APPEARANCE_DEFAULTS);
+    assert.ok(settings);
+    assert.match(appearanceCss(settings), new RegExp(`--radius:${preset.pixels}px[;}]`));
+  }
 });
 
 test('built-in and custom colors retain readable text on buttons, surfaces and links', () => {

@@ -3,13 +3,7 @@
 <section class="card">
   <div class="card-header">
     <div><h2 class="card-title">用户</h2><p class="card-description">共 <%= total %> 位用户</p></div>
-    <form method="get" action="/admin/users" class="flex w-full gap-1.5 sm:w-72">
-      <div class="relative flex-1">
-        <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><%- icon('search') %></span>
-        <input type="text" name="keyword" class="input pl-8" placeholder="UID / 邮箱 / 昵称" value="<%= keyword %>">
-      </div>
-      <button type="submit" class="btn btn-outline btn-icon" aria-label="搜索"><%- icon('search') %></button>
-    </form>
+    <%- include('../partials/admin-search',{searchPath:'/admin/users',searchPlaceholder:t('search.users'),searchExample:'score>=100 verified sort:-score'}) %>
   </div>
   <% if (users.length === 0) { %>
   <div class="empty-state"><div class="empty-state-title">没有找到用户</div></div>
@@ -45,6 +39,7 @@
           </td>
           <td class="whitespace-nowrap text-xs text-muted-foreground"><%= u.register_at %></td>
           <td class="text-right whitespace-nowrap">
+            <a class="btn btn-ghost btn-xs" href="/admin/closet/<%= u.uid %>">衣柜</a>
             <button type="button" class="btn btn-outline btn-xs" data-action="admin-edit-user" data-uid="<%= u.uid %>" data-email="<%= u.email %>" data-nickname="<%= u.nickname %>" data-score="<%= u.score %>">编辑</button>
             <button type="button" class="btn btn-ghost btn-xs text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="admin-delete-user" data-uid="<%= u.uid %>"><%- icon('trash-2') %></button>
           </td>

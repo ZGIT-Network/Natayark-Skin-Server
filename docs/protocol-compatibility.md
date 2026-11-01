@@ -46,7 +46,7 @@ users、players、uuid、options、oauth_* 和 yggc_* 沿用原表名及列。�
 
 
 - 未经过 HMCL/PCL/Prism 等实际启动器及两个真实 Minecraft 图形客户端联机验收。
-- 当前 join cache 为单进程内存；多进程/多实例需要共享 Redis 等会话存储，重启后需重新 join。
+- join 状态存于共享数据库的短期认证表，保留 30 秒；使用 AES-256-GCM 加密，所有实例共享数据库和 APP_KEY。独立进程及重启、过期、吊销、密文损坏均有检查。
 - 聊天玩家证书 POST /minecraftservices/player/certificates 未实现，feature.enable_profile_key 明确为 false。公钥 API 不声称已提供聊天证书。
 - 不支持动态客户端注册、隐式流、password/client_credentials grant、DPoP、PAR 等可选功能；发现文档只广告实际实现的功能。
 - 手写 Connect 提供者没有获得 OpenID Foundation 认证。规范覆盖测试不等于通过官方 OIDC conformance suite。

@@ -8,7 +8,7 @@ declare module 'fastify' {
     currentUser: User | null;
     csrfToken(): string;
     checkCsrf(token?: string): boolean;
-    setSession(uid: number): Promise<void>;
+    setSession(uid: number,remember?:boolean): Promise<void>;
     clearSession(): Promise<void>;
     t(key: string): string;
   }

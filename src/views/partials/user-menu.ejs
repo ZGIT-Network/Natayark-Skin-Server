@@ -1,15 +1,15 @@
 <%
   if (typeof t !== 'function') locals.t = function (key) { return key; };
 %>
-<div class="dropdown" data-dropdown>
+<div class="dropdown" data-dropdown data-user-menu>
   <button type="button" class="btn btn-ghost btn-sm gap-2 px-1.5" data-dropdown-trigger aria-haspopup="menu" aria-expanded="false">
     <span class="avatar size-8">
-      <img src="/avatar/user/<%= user.uid %>?v=4&size=64" alt="">
+      <img src="/avatar/user/<%= user.uid %>?v=5&size=64" alt="" width="64" height="64">
     </span>
     <span class="hidden max-w-32 truncate text-sm font-medium md:inline"><%= user.nickname || user.email %></span>
     <%- icon('chevron-down', 'size-3 opacity-60 hidden sm:block') %>
   </button>
-  <div class="dropdown-menu" data-dropdown-menu role="menu">
+  <div class="dropdown-menu" data-dropdown-menu role="menu" hidden>
     <div class="px-2.5 py-2">
       <div class="truncate text-sm font-medium"><%= user.nickname || user.email %></div>
       <div class="truncate text-xs text-muted-foreground"><%= user.email %></div>

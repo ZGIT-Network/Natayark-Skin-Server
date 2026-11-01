@@ -9,7 +9,7 @@
 <head>
   <%- include('head') %>
 </head>
-<body class="auth-page">
+<body class="auth-page" data-page-shell="standalone" data-user-id="<%= user ? user.uid : 0 %>">
   <div class="w-full max-w-xl" data-page-content>
     <div class="mb-6 flex items-center justify-between gap-4">
       <a href="/" class="flex min-w-0 items-center gap-2.5">

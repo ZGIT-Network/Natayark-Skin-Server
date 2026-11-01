@@ -1,19 +1,35 @@
 {
-  "name": "mcnskin",
+  "name": "natayark-skin-server",
   "version": "1.0.0",
-  "description": "Natayark SkinServer - Minecraft skin station & Yggdrasil auth server (Node.js rewrite of Blessing Skin Server)",
+  "description": "Self-hosted Minecraft skin server with Yggdrasil authentication and Yggdrasil Connect.",
+  "private": true,
+  "license": "MIT",
+  "files": ["dist/","src/","scripts/","migrations/","public/","tests/","docs/","schema.sql","tsconfig.json",".env.example","LICENSE","THIRD_PARTY_NOTICES.md","CONTRIBUTING.md","SECURITY.md"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZGIT-Network/Natayark-Skin-Server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZGIT-Network/Natayark-Skin-Server/issues"
+  },
+  "homepage": "https://github.com/ZGIT-Network/Natayark-Skin-Server#readme",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
+    "setup": "node scripts/configure.mjs",
+    "repo:check": "node scripts/check-repository.mjs",
+    "db:init": "tsx scripts/initialize.ts",
+    "admin:promote": "tsx scripts/promote-admin.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p . && node scripts/build-client.mjs && npm run css",
     "start": "node dist/index.js",
     "client": "node scripts/build-client.mjs",
     "css": "tailwindcss -i ./src/styles/app.css -o ./public/css/app.css --minify",
     "typecheck": "tsc -p . --noEmit",
-    "test": "node --import tsx --test tests/auth.test.ts tests/economy.test.ts tests/theme.test.ts tests/render.test.ts tests/client-feedback.test.ts",
+    "migrate": "tsx scripts/migrate.ts",
+    "test": "node --import tsx --test tests/auth.test.ts tests/economy.test.ts tests/theme.test.ts tests/render.test.ts tests/client-feedback.test.ts tests/search.test.ts",
     "test:integration": "node scripts/test-integration.mjs"
   },
   "dependencies": {
@@ -39,7 +55,6 @@
   },
   "devDependencies": {
     "@fontsource-variable/inter": "^5.3.0",
-    "@fortawesome/fontawesome-free": "^5.15.4",
     "@tailwindcss/cli": "^4.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/ejs": "^3.1.5",
@@ -48,10 +63,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/pngjs": "^6.0.5",
     "@types/sanitize-html": "^2.16.2",
-    "admin-lte": "^3.2.0",
-    "bootstrap": "^4.6.2",
     "esbuild": "^0.25.3",
-    "jquery": "^3.7.1",
     "openid-client": "^6.8.8",
     "skinview3d": "^3.4.1",
     "tailwindcss": "^4.3.3",

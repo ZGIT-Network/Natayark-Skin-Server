@@ -16,7 +16,7 @@ function setup(kind:'sign'|'form-error') {
     querySelectorAll(selector:string){return kind==='form-error'&&selector==='form[data-action="add-player"]'?[form]:[];},
     addEventListener(){},
   };
-  vm.runInNewContext(source,{document,window:{__CSRF:'test',UI:{message:(content:string,type:string)=>calls.push([content,type])}},setTimeout,URLSearchParams,
+  vm.runInNewContext(source,{document,window:{__CSRF:'test',UI:{message:(content:string,type:string)=>calls.push([content,type])}},setTimeout,URLSearchParams,AbortController,
     fetch:async()=>({ok:kind==='sign',status:kind==='sign'?200:400,json:async()=>kind==='sign'?{code:0,message:'签到成功',acquired:10}:{code:1,message:'角色名已存在'}})});
   return{calls,handlers,button,score,label};
 }

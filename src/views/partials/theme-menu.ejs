@@ -4,7 +4,7 @@
     <span data-theme-symbol="light" hidden><%- icon('sun') %></span>
     <span data-theme-symbol="dark" hidden><%- icon('moon') %></span>
   </button>
-  <div class="dropdown-menu" data-dropdown-menu role="menu" aria-label="<%= t('theme.choose') %>">
+  <div class="dropdown-menu" data-dropdown-menu role="menu" aria-label="<%= t('theme.choose') %>" hidden>
     <% for (const [mode, glyph] of [['system','monitor'],['light','sun'],['dark','moon']]) { %>
     <button type="button" class="dropdown-item" data-theme-choice="<%= mode %>" role="menuitemradio" aria-checked="false"><%- icon(glyph) %><span><%= t('theme.' + mode) %></span><span class="theme-check" aria-hidden="true"><%- icon('check') %></span></button>
     <% } %>

@@ -11,6 +11,9 @@ import { findProvider, buildAuthorizeUrl, exchangeCode, createOAuthFlow, readOAu
 import { sendMail, mailConfigured } from '../services/mail.js';
 import { validatePlayerName } from '../util.js';
 import { loginMethods } from '../services/login-methods.js';
+import { pluginEnabled } from '../services/plugins.js';
+import { findPlayerByName } from '../services/player.js';
+import {createCaptcha,verifyCaptcha,loginFailures,recordLoginFailure,clearLoginFailures} from '../services/captcha.js';
 
 type View = (request: FastifyRequest) => Promise<Record<string, any>>;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,8 +30,7 @@ async function origin(): Promise<string> {
   return url.origin;
 }
 export async function registrationEnabled(): Promise<boolean> {
-  const plugins = await getOption('plugins_enabled', '');
-  return !/(?:^|["',\s])disable-registration(?:$|["',\s])/.test(plugins);
+  return !await pluginEnabled('disable-registration');
 }
 export async function localLoginEnabled(): Promise<boolean> {
   return getOptionBool('local_login_enabled', true);
@@ -76,26 +78,49 @@ async function completeOAuthRegistration(flowToken: string, sid: string): Promis
     return { uid: result.user.uid, redirect: flow.redirect };
   });
 }
+async function completeLegacyOAuth(flowToken: string, sid: string, passwordProof?:string): Promise<{uid:number;redirect:string}|null> {
+  return transaction(async conn => {
+    const flow=await readOAuthFlow(flowToken,sid,'legacy-link',true);
+    if(!flow?.legacyUid||!flow.remote||!flow.email||!await findProvider(flow.provider))return null;
+    const [rows]=await conn.query<any[]>('SELECT uid,email,permission,password FROM users WHERE uid=? FOR UPDATE',[flow.legacyUid]);
+    const user=rows[0];
+    if(!user||user.permission<0||user.email.trim().toLowerCase()!==flow.email)throw new Error('原账户状态或邮箱已变化，请重新授权');
+    if(passwordProof!==undefined&&!checkUserPassword(user,passwordProof))throw new Error('原账户密码已变化，请重新验证');
+    const identity=await findIdentity(flow.provider,flow.remote.id);
+    if(identity&&identity.user_id!==user.uid)throw new Error('该第三方身份已绑定其他账户');
+    if(!identity&&!await linkIdentity(user.uid,flow.provider,flow.remote))throw new Error('此账户已有该提供方的其他绑定，请使用原登录方式');
+    return{uid:user.uid,redirect:flow.redirect};
+  });
+}
 export async function registerAuthRoutes(app: FastifyInstance, view: View): Promise<void> {
   const guarded = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+  app.route({method:['GET','POST'],url:'/auth/captcha',config:{rateLimit:{max:30,timeWindow:'1 minute'}},handler:async(request,reply)=>{
+    if(!request.session)return reply.code(400).send({code:1,message:'请先打开登录页面'});
+    return reply.header('Cache-Control','private, no-store').type('image/jpeg').send(await createCaptcha(request.session.sid));
+  }});
   app.get('/auth/login', async (request, reply) => {
     if (request.currentUser) return reply.redirect(safeAuthRedirect((request.query as any).redirect));
-    return reply.view('auth/login', { ...(await view(request)), error: null, redirect: safeAuthRedirect((request.query as any).redirect), registrationEnabled: await registrationEnabled() });
+    return reply.view('auth/login', { ...(await view(request)), error: null, redirect: safeAuthRedirect((request.query as any).redirect), registrationEnabled: await registrationEnabled(),captchaRequired:await loginFailures(request.ip)>3 });
   });
   app.post('/auth/login', guarded, async (request, reply) => {
     const body = textBody(request);
     const fail = async (message: string, code = 401) => reply.code(code).view('auth/login', {
       ...(await view(request)), error: message, redirect: safeAuthRedirect(body.redirect),
-      email: String(body.email || '').slice(0, 100),
+      email: String(body.identification ?? body.email ?? '').slice(0, 100),
       registrationEnabled: await registrationEnabled(),
+      captchaRequired:await loginFailures(request.ip)>3,
     });
     if (!request.checkCsrf(body.csrf)) return fail('会话已过期，请刷新后重试', 403);
     if (!(await localLoginEnabled())) return fail('本站已关闭邮箱密码登录，请使用第三方账号登录', 403);
-    const user = await findUserByEmail(String(body.email || '').trim().toLowerCase());
-    if (!user || user.permission === PERMISSION_BANNED || !checkUserPassword(user, String(body.password || ''))) return fail('邮箱或密码不正确');
+    if(await loginFailures(request.ip)>3&&(!request.session||!await verifyCaptcha(request.session.sid,body.captcha??body['g-recaptcha-response'],request.ip)))return fail('验证码不正确或已过期，请重新输入',422);
+    const identification=String(body.identification??body.email??'').trim();
+    const player=EMAIL.test(identification)?null:await findPlayerByName(identification);
+    const user=EMAIL.test(identification)?await findUserByEmail(identification.toLowerCase()):player?await findUserByUid(player.uid):null;
+    if (!user || user.permission === PERMISSION_BANNED || !checkUserPassword(user, String(body.password || ''))) {await recordLoginFailure(request.ip);return fail('账户或密码不正确');}
+    await clearLoginFailures(request.ip);
     if (needsRehash(user.password)) await changeUserPassword(user.uid, body.password);
     await clearSessionCookie(reply, request);
-    await request.setSession(user.uid);
+    await request.setSession(user.uid,['1','true','on','yes'].includes(String(body.keep??body.remember??'')));
     return reply.redirect(safeAuthRedirect(body.redirect));
   });
   app.get('/auth/register', async (request, reply) => {
@@ -115,8 +140,9 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
     if (!request.checkCsrf(body.csrf)) return fail('会话已过期，请刷新后重试', 403);
     if (!(await localLoginEnabled())) return reply.redirect('/auth/login');
     if (!(await registrationEnabled())) return fail('本站已关闭注册', 403);
+    if(!request.session||!await verifyCaptcha(request.session.sid,body.captcha??body['g-recaptcha-response'],request.ip))return fail('验证码不正确或已过期，请重新输入',422);
     const password = String(body.password || ''), playerName = String(body.player_name || '').trim();
-    if (password !== body.password_confirm) return fail('两次密码不一致');
+    if (password !== (body.password_confirm??body.password_confirmation)) return fail('两次密码不一致');
     if (password.length < 8 || password.length > 128 || Buffer.byteLength(password) > 72) return fail('密码为 8–72 字节');
     if (registerWithPlayerName && !validatePlayerName(playerName)) return fail('角色名不符合本站命名规则');
     const limit = Number(await getOption('regs_per_ip', '3'));
@@ -142,6 +168,7 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
     const body = textBody(request), base = await view(request);
     if (!request.checkCsrf(body.csrf)) return failPage(reply, base, '会话已过期', 403);
     if (!mailConfigured()) return reply.code(503).view('auth/forgot', { ...base, error: '邮件服务尚未配置，请联系站点管理员', sent: false, mailConfigured: false });
+    if(!request.session||!await verifyCaptcha(request.session.sid,body.captcha??body['g-recaptcha-response'],request.ip))return reply.code(422).view('auth/forgot',{...base,error:'验证码不正确或已过期，请重新输入',sent:false,mailConfigured:true});
     const user = await findUserByEmail(String(body.email || '').trim().toLowerCase());
     if (user && user.permission !== PERMISSION_BANNED) {
       const recent = await queryOne('SELECT token_hash FROM mcn_email_challenges WHERE purpose = ? AND user_id = ? AND created_at > ?', ['reset', user.uid, nowString(-180)]);
@@ -217,11 +244,43 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
       await request.setSession(user.uid);
       return reply.redirect(safeAuthRedirect(flow.redirect));
     }
+    const legacy=remote.email&&await findUserByEmail(remote.email);
+    if(legacy){
+      if(legacy.permission<0)return failPage(reply,base,'账户不可用',403);
+      // Old PHP retained only the email. Require independent proof before establishing a stable subject binding.
+      const token=await createOAuthFlow(request.session!.sid,'legacy-link',{provider:key,redirect:flow.redirect,remote,email:legacy.email.trim().toLowerCase(),legacyUid:legacy.uid},3600);
+      return reply.redirect('/auth/oauth/migrate?flow='+encodeURIComponent(token));
+    }
     if (!(await registrationEnabled())) return failPage(reply, base, '该身份尚未绑定账户，本站已关闭注册', 403);
-    // An asserted email alone never grants access to an existing local account.
-    if (remote.email && await findUserByEmail(remote.email)) return failPage(reply, base, '该邮箱已有账户。请先用原账户登录，在“登录方式”中绑定此第三方身份', 409);
     const token = await createOAuthFlow(request.session!.sid, 'pending', { provider: key, redirect: flow.redirect, remote, share: flow.share }, 3600);
     return reply.redirect('/auth/oauth/complete?flow=' + encodeURIComponent(token));
+  });
+  app.get('/auth/oauth/migrate',async(request,reply)=>{
+    const token=String((request.query as any).flow??''),flow=request.session&&await readOAuthFlow(token,request.session.sid,'legacy-link');
+    if(!flow?.legacyUid||!flow.remote)return failPage(reply,await view(request),'账户衔接会话无效或已过期，请重新授权');
+    return reply.view('auth/oauth-migrate',{...await view(request),flow:token,email:flow.email,providerName:(await findProvider(flow.provider))?.displayName??flow.provider,error:null,sent:false,mailAvailable:mailConfigured()});
+  });
+  app.post('/auth/oauth/migrate',guarded,async(request,reply)=>{
+    const body=textBody(request),token=String(body.flow??''),base=await view(request);
+    if(!request.session||!request.checkCsrf(body.csrf))return failPage(reply,base,'会话已过期，请重新授权',403);
+    const flow=await readOAuthFlow(token,request.session.sid,'legacy-link');
+    if(!flow?.legacyUid||!flow.email||!flow.remote)return failPage(reply,base,'账户衔接会话无效或已过期');
+    const render=(error:string|null,sent=false)=>reply.view('auth/oauth-migrate',{...base,flow:token,email:flow.email,providerName:flow.provider,error,sent,mailAvailable:mailConfigured()});
+    const user=await findUserByUid(flow.legacyUid);
+    if(!user||user.permission<0||user.email.trim().toLowerCase()!==flow.email)return failPage(reply,base,'原账户状态已变化，请重新授权',409);
+    if(body.method==='password'){
+      if(!user.password||!checkUserPassword(user,String(body.password??'')))return render('原账户密码不正确；没有设置过密码的账户请验证原邮箱');
+      try{
+        const linked=await completeLegacyOAuth(token,request.session.sid,String(body.password??''));
+        if(!linked)return render('账户衔接会话已失效，请重新授权');
+        await clearSessionCookie(reply,request);await request.setSession(linked.uid);return reply.redirect(safeAuthRedirect(linked.redirect));
+      }catch(error:any){return render(error.message);}
+    }
+    if(body.method!=='email')return render('请选择验证原邮箱或原账户密码');
+    if(!mailConfigured())return render('站点暂未配置邮件服务，请联系管理员或使用原账户密码验证');
+    if(await queryOne('SELECT token_hash FROM mcn_email_challenges WHERE user_id=? AND purpose=? AND created_at>?',[user.uid,'legacy-oauth',nowString(-180)]))return render('验证邮件已发送，请稍后再试',true);
+    const sent=await sendChallenge('legacy-oauth',user.uid,user.email,{flow:token,browser:tokenHash(request.session.sid)});
+    return render(sent?null:'验证邮件未能发送，请稍后重试',sent);
   });
   app.get('/auth/oauth/complete', async (request, reply) => {
     const token = String((request.query as any).flow || '');
@@ -272,10 +331,24 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
   app.get('/auth/verify-email', async (request, reply) => {
     const token = String((request.query as any).token || ''), base = await view(request);
     if (!token || token.length > 100) return failPage(reply, base, '验证链接无效或已过期');
-    const row = await queryOne<any>('SELECT * FROM mcn_email_challenges WHERE token_hash = ? AND purpose IN (?, ?, ?) AND expires_at > ?', [tokenHash(token), 'verify', 'oauth', 'email-change', nowString()]);
+    const row = await queryOne<any>('SELECT * FROM mcn_email_challenges WHERE token_hash = ? AND purpose IN (?, ?, ?, ?) AND expires_at > ?', [tokenHash(token), 'verify', 'oauth', 'email-change', 'legacy-oauth', nowString()]);
     if (!row) return failPage(reply, base, '验证链接无效或已过期');
     let payload: any;
     try { payload = JSON.parse(row.payload); } catch { return failPage(reply, base, '验证链接无效'); }
+    if(row.purpose==='legacy-oauth'){
+      if(!request.session||payload.browser!==tokenHash(request.session.sid))return failPage(reply,base,'请在发起第三方授权的同一浏览器中确认原账户',403);
+      try{
+        const linked=await transaction(async conn=>{
+          const [rows]=await conn.query<any[]>('SELECT token_hash FROM mcn_email_challenges WHERE token_hash=? AND expires_at>? FOR UPDATE',[tokenHash(token),nowString()]);
+          if(!rows.length)return null;
+          const result=await completeLegacyOAuth(payload.flow,request.session!.sid);
+          if(!result||result.uid!==row.user_id)throw new Error('账户衔接会话已失效，请重新授权');
+          await conn.query('DELETE FROM mcn_email_challenges WHERE token_hash=?',[tokenHash(token)]);return result;
+        });
+        if(!linked)return failPage(reply,base,'验证链接已使用或过期');
+        await clearSessionCookie(reply,request);await request.setSession(linked.uid);return reply.redirect(safeAuthRedirect(linked.redirect));
+      }catch(error:any){return failPage(reply,base,error.message);}
+    }
     if (row.purpose === 'oauth') {
       if (!request.session || payload.browser !== tokenHash(request.session.sid)) return failPage(reply, base, '请在发起第三方注册的同一浏览器中打开验证链接');
       const flow = await readOAuthFlow(payload.flow, request.session.sid, 'pending');

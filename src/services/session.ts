@@ -29,17 +29,17 @@ export function parseSession(cookieValue: string | undefined): SessionData | nul
     return age >= -60 && age <= MAX_AGE_SECONDS ? data : null;
   } catch { return null; }
 }
-function writeCookie(reply: FastifyReply, data: SessionData): void {
+function writeCookie(reply: FastifyReply, data: SessionData,remember:boolean): void {
   reply.setCookie(COOKIE_NAME, serializeSession(data), {
-    path: '/', httpOnly: true, sameSite: 'lax', maxAge: MAX_AGE_SECONDS,
+    path: '/', httpOnly: true, sameSite: 'lax', ...(remember?{maxAge:MAX_AGE_SECONDS}:{}),
     secure: process.env.NODE_ENV === 'production',
   });
 }
-async function createSession(reply: FastifyReply, uid: number): Promise<SessionData> {
+async function createSession(reply: FastifyReply, uid: number,remember=false): Promise<SessionData> {
   const data: SessionData = { uid, iat: Math.floor(Date.now() / 1000), sid: crypto.randomBytes(32).toString('hex') };
   if (uid) await exec('INSERT INTO mcn_web_sessions (sid_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
     [tokenHash(data.sid), uid, nowString(), nowString(MAX_AGE_SECONDS)]);
-  writeCookie(reply, data);
+  writeCookie(reply, data,remember);
   return data;
 }
 export async function loadSession(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -65,8 +65,8 @@ export async function loadSession(request: FastifyRequest, reply: FastifyReply):
     || /^\/connect\/(?:authorize|interaction|device)(?:\/|$)/.test(pathname);
   if (!request.session && browserPage) request.session = await createSession(reply, 0);
 }
-export async function setSessionCookie(reply: FastifyReply, uid: number): Promise<void> {
-  await createSession(reply, uid);
+export async function setSessionCookie(reply: FastifyReply, uid: number,remember=true): Promise<void> {
+  await createSession(reply, uid,remember);
 }
 export async function clearSessionCookie(reply: FastifyReply, request?: FastifyRequest): Promise<void> {
   if (request?.session) await exec('DELETE FROM mcn_web_sessions WHERE sid_hash = ?', [tokenHash(request.session.sid)]);

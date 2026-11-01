@@ -1,10 +1,12 @@
 import { SkinViewer, WalkingAnimation, RunningAnimation } from 'skinview3d';
 
-// Behavior and assets follow Blessing Skin's shipped preview component (module
-// 1997 in 997.b99f3d5.js): walk/run, rotation, pause, stop, colors and seven scenes.
+// Interactive preview controls: walk/run, rotation, pause, stop, colors and scenes.
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const defaultSkin = '/app/default-skin.png';
 const cleanups = [];
+function unmount(){cleanups.splice(0).forEach(cleanup=>cleanup());}
+function mount(){
+unmount();
 
 for (const container of document.querySelectorAll('[data-skin-viewer]')) {
   const viewport = container.querySelector('[data-viewer-viewport]');
@@ -180,4 +182,7 @@ for (const container of document.querySelectorAll('[data-skin-viewer]')) {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
   });
 }
-window.addEventListener('pagehide', event => { if (!event.persisted) cleanups.forEach(cleanup => cleanup()); });
+}
+window.SkinPreviews={mount,unmount};
+if(!window.SiteNavigation?.isRendering)mount();
+window.addEventListener('pagehide', event => { if (!event.persisted) unmount(); });

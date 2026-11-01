@@ -31,7 +31,7 @@ import {
   SCOPES,
   type VerifiedToken,
 } from '../services/token.js';
-import { cacheGet, cachePut } from '../services/cache.js';
+import {getJoinSession,putJoinSession} from '../services/join-session.js';
 import { yggLog } from '../services/ygglog.js';
 import { randomHex, uuid4Hex } from '../util.js';
 import { issuer } from '../services/oidc.js';
@@ -318,17 +318,17 @@ export async function registerYggdrasilRoutes(app: FastifyInstance): Promise<voi
       throw forbiddenOperation('The access token is not owned by the profile owner');
     }
 
-    cachePut(`ygg_server_${serverId}_${selectedProfile}`, { profile: selectedProfile, name, ip: request.ip, accessToken }, 30);
+    await putJoinSession(serverId,{profile:selectedProfile,name,ip:request.ip,accessToken});
     await yggLog({ action: 'join', user_id: user.uid, player_id: player.pid, parameters: { serverId }, ip: request.ip });
     return reply.code(204).send();
   });
 
   app.get('/api/yggdrasil/sessionserver/session/minecraft/hasJoined', async (request, reply) => {
     const { username, serverId, ip } = request.query as Record<string, string | undefined>;
-    if (!username || !serverId) return reply.code(400).send();
+    if (!username || !serverId || serverId.length>255 || username.length>100) return reply.code(400).send();
     const uuid = await getUuidByName(username);
     if (!uuid) return reply.code(204).send();
-    const session = cacheGet<{ profile: string; name: string; ip: string; accessToken: string }>(`ygg_server_${serverId}_${uuid}`);
+    const session = await getJoinSession(serverId,uuid);
     if (!session) return reply.code(204).send();
     if (!(await verifyAccessToken(session.accessToken))) return reply.code(204).send();
     if (ip && session.ip && ip !== session.ip) return reply.code(204).send();

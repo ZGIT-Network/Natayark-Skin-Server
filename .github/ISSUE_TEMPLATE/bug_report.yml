@@ -1,0 +1,18 @@
+name: 问题报告
+description: 报告可以复现的错误
+labels: [bug]
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 提交版本、Node.js、数据库版本、浏览器；涉及游戏时附启动器和 Minecraft 版本。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 如何复现
+      description: 写清操作步骤、实际结果和预期结果。截图与日志请先去除邮箱、UUID、令牌和其他私密信息。安全漏洞请使用私密报告渠道。
+    validations:
+      required: true

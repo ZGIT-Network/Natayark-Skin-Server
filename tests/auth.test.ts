@@ -4,6 +4,18 @@ import { hashPassword, verifyPassword } from '../src/services/cipher.js';
 import { serializeSession, parseSession, csrfToken, checkCsrf } from '../src/services/session.js';
 import { mapOAuthUser, buildAuthorizeUrl, NATAYARK_ID_PRESET, validateProvider } from '../src/services/oauth-client.js';
 import { safeAuthRedirect } from '../src/routes/auth.js';
+import { enabledPluginNames } from '../src/services/plugins.js';
+import { compileLegacyPattern } from '../src/util.js';
+
+test('legacy plugin object arrays and PHP-delimited player rules keep their meaning',()=>{
+  assert.deepEqual(enabledPluginNames('[{"name":"single-player-limit","version":"3.0"},{"name":"gravatar"}]'),['single-player-limit','gravatar']);
+  assert.deepEqual(enabledPluginNames('{"share-registration-link":{"version":"2"},"disabled":false}'),['share-registration-link']);
+  assert.deepEqual(enabledPluginNames('["oauth","gravatar"]'),['oauth','gravatar']);
+  assert.equal(compileLegacyPattern('/^[a-z_]+$/i')?.test('Player_'),true);
+  assert.equal(compileLegacyPattern('/^[a-z]+$/D')?.test('abc\n'),false);
+  assert.equal(compileLegacyPattern('/[invalid/'),null);
+  assert.equal(compileLegacyPattern('/abc/e'),null);
+});
 
 test('all legacy digest ciphers preserve PHP vectors and reject wrong passwords', async () => {
   const previous = { method: process.env.PWD_METHOD, salt: process.env.SALT };

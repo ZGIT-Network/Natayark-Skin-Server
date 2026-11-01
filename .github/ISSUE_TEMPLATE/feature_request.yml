@@ -1,0 +1,15 @@
+name: 功能建议
+description: 说明实际使用场景
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 想解决什么问题
+      description: 描述使用场景，以及当前遇到的限制。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的行为
+      description: 可以附参考或替代方案。

@@ -1,0 +1,63 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run repo:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_DATABASE: natayark_test
+          MYSQL_ROOT_PASSWORD: ci-only-fixture-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only-fixture-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      NODE_ENV: test
+      APP_KEY: ci-only-fixture-key-do-not-use-for-a-real-site
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: natayark_test
+      DB_USERNAME: root
+      DB_PASSWORD: ci-only-fixture-password
+      DB_TABLE_PREFIX: dev_ci_
+      MAIL_HOST: ''
+      MAIL_FROM_ADDRESS: ''
+      TZ: Asia/Shanghai
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:init -- --apply
+      - run: npm run build
+      - run: npm run test:integration

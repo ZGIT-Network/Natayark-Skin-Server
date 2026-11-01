@@ -1,9 +1,15 @@
 /* MCNSKIN client actions — fetch-based, no jQuery/Bootstrap dependency. */
 (function () {
   'use strict';
+  var active;
+  function mount() {
+  if(active)active.abort();
+  var scope=active=new AbortController();
+  function on(target,event,handler){target.addEventListener(event,handler,{signal:scope.signal});}
+  function navigate(url){if(!scope.signal.aborted){if(window.SiteNavigation)window.SiteNavigation.visit(url);else window.location.href=url;}}
 
   document.querySelectorAll('form[data-action="unlink-identity"]').forEach(function (form) {
-    form.addEventListener('submit', async function (event) {
+    on(form, 'submit', async function (event) {
       event.preventDefault();
       if (!await confirmAction({title:'解除绑定',description:'确认解除此第三方账号与本站的绑定？',danger:true})) return;
       var button=form.querySelector('[type="submit"]'); button.disabled=true;
@@ -11,12 +17,14 @@
         var response=await fetch(form.action,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json'},body:new URLSearchParams(new FormData(form))});
         var data=await response.json();
         if(!response.ok||data.code===1)throw new Error(data.message||'解绑失败');
-        window.location.href='/user/connections?notice=unlinked';
+        navigate('/user/connections?notice=unlinked');
       } catch(error) { button.disabled=false; if(window.UI)window.UI.message.error(error.message); }
     });
   });
 
   var CSRF = window.__CSRF || '';
+  var quote = document.querySelector('[data-site-quote]');
+  if(quote)fetch('/user/quote',{credentials:'same-origin'}).then(function(response){return response.ok&&response.status!==204?response.json():null;}).then(function(data){if(data&&typeof data.text==='string'){quote.textContent=data.text;quote.title='来源：'+data.source+(data.stale?'（缓存或备用内容）':'');}}).catch(function(){});
 
   function api(method, url, body) {
     if (body === undefined && method !== 'GET' && method !== 'HEAD') body = {};
@@ -34,7 +42,7 @@
   }
 
   function showMessage(content, isError) {
-    if (window.UI) window.UI.message(content, isError ? 'error' : 'success');
+    if (!scope.signal.aborted && window.UI) window.UI.message(content, isError ? 'error' : 'success');
   }
 
   function confirmAction(options) {
@@ -48,7 +56,7 @@
   }
 
   function reloadLater(delay) {
-    setTimeout(function () { window.location.reload(); }, delay || 450);
+    setTimeout(function () { if(!scope.signal.aborted){if(window.SiteNavigation)window.SiteNavigation.refresh();else window.location.reload();} }, delay || 450);
   }
 
   function formError(form, message) {
@@ -69,7 +77,7 @@
   /* --- Sign-in bonus --------------------------------------------------------- */
   var signBtn = document.getElementById('sign-btn');
   if (signBtn) {
-    signBtn.addEventListener('click', function () {
+    on(signBtn, 'click', function () {
       signBtn.disabled = true;
       api('POST', '/user/sign').then(function (data) {
         showMessage(data.message || '签到成功');
@@ -86,7 +94,7 @@
 
   /* --- Add player ------------------------------------------------------------ */
   document.querySelectorAll('form[data-action="add-player"]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    on(form, 'submit', function (event) {
       event.preventDefault();
       var input = form.querySelector('[name="name"]');
       var name = input ? input.value.trim() : '';
@@ -104,7 +112,7 @@
   });
 
   /* --- Delegated actions ----------------------------------------------------- */
-  document.addEventListener('click', async function (event) {
+  on(document, 'click', async function (event) {
     var element = event.target.closest('[data-action]');
     if (!element) return;
     var action = element.getAttribute('data-action');
@@ -161,13 +169,18 @@
       } else if (action === 'remove-closet') {
         var remove = await confirmAction({ title: '移出衣柜', description: '确认将这件材质移出衣柜？', confirmText: '移除', danger: true });
         if (!remove) return;
-        var removed = await api('DELETE', '/api/closet/' + element.getAttribute('data-tid'));
+        var managedOwner = element.getAttribute('data-owner');
+        var removed = await api('DELETE', managedOwner ? '/api/admin/closet/' + managedOwner : '/api/closet/' + element.getAttribute('data-tid'), managedOwner ? {tid:Number(element.getAttribute('data-tid'))} : undefined);
         showMessage(removed.message || '已移出衣柜');
         reloadLater();
       } else if (action === 'add-closet') {
         var added = await api('POST', '/api/closet', { tid: parseInt(element.getAttribute('data-tid'), 10) });
         showMessage(added.message || '已添加到衣柜');
         reloadLater();
+      } else if (action === 'read-all-notifications') {
+        element.disabled = true;
+        try { var read = await api('POST','/user/notifications/all'); showMessage(read.message); reloadLater(); }
+        finally { element.disabled = false; }
       } else if (action === 'toggle-privacy') {
         var makePublic = element.getAttribute('data-public') !== '1';
         var toggled = await api('PUT', '/api/skinlib/' + element.getAttribute('data-tid') + '/privacy', { public: makePublic ? '1' : '0' });
@@ -180,7 +193,7 @@
         if (!removeTexture) return;
         var textureDeleted = await api('DELETE', '/api/skinlib/' + element.getAttribute('data-tid'));
         showMessage(textureDeleted.message || '材质已删除');
-        window.location.href = '/skinlib';
+        navigate('/skinlib');
       } else if (action === 'apply-texture') {
         element.disabled = true;
         var applyType = element.getAttribute('data-type');
@@ -254,9 +267,10 @@
       showMessage(error.message, true);
     }
   });
+  document.querySelectorAll('[data-refresh-captcha]').forEach(function(button){on(button, 'click',function(){button.querySelector('img').src='/auth/captcha?refresh='+Date.now();});});
 
   /* --- Submit buttons inside dialogs ---------------------------------------- */
-  document.addEventListener('click', function (event) {
+  on(document, 'click', function (event) {
     var button = event.target.closest('[data-submit-form]');
     if (!button) return;
     var form = button.closest('dialog').querySelector('form[data-action="' + button.getAttribute('data-submit-form') + '"]');
@@ -265,7 +279,7 @@
   });
 
   /* --- Inline admin selects -------------------------------------------------- */
-  document.addEventListener('change', function (event) {
+  on(document, 'change', function (event) {
     var select = event.target.closest('[data-action="admin-set-user"]');
     if (!select) return;
     api('PUT', '/api/admin/user/' + select.getAttribute('data-uid'), {
@@ -281,7 +295,7 @@
 
   /* --- Admin user form ------------------------------------------------------- */
   document.querySelectorAll('form[data-action="admin-save-user"]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    on(form, 'submit', function (event) {
       event.preventDefault();
       var uid = form.dataset.uid;
       if (!uid) return;
@@ -306,7 +320,7 @@
 
   /* --- Admin player form ----------------------------------------------------- */
   document.querySelectorAll('form[data-action="admin-save-player"]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    on(form, 'submit', function (event) {
       event.preventDefault();
       var pid = form.dataset.pid;
       if (!pid) return;
@@ -329,8 +343,41 @@
   });
 
   /* --- Texture description --------------------------------------------------- */
+  document.querySelectorAll('[data-notification-id]').forEach(function (item) {
+    on(item, 'toggle', function () {
+      if (!item.open || item.dataset.unread !== 'true' || item.dataset.readPending === 'true') return;
+      item.dataset.readPending = 'true';
+      api('POST','/user/notifications/' + item.dataset.notificationId).then(function () {
+        item.dataset.unread = 'false'; item.querySelector('[data-read-state]').textContent = '已读';
+      }).catch(function (error) { showMessage(error.message,true); }).finally(function () { item.dataset.readPending = 'false'; });
+    });
+  });
+  document.querySelectorAll('form[data-action="send-notification"]').forEach(function (form) {
+    var receiver = form.elements.receiver;
+    on(receiver, 'change', function () {
+      form.querySelectorAll('[data-recipient]').forEach(function (field) { field.hidden = field.dataset.recipient !== receiver.value; });
+    });
+    on(form, 'submit', async function (event) {
+      event.preventDefault();
+      var button = form.querySelector('[type="submit"]'); button.disabled = true;
+      var errorField = form.querySelector('[data-form-error]'); if (errorField) errorField.classList.add('hidden');
+      try {
+        if (['all','normal'].indexOf(receiver.value) >= 0 && !await confirmAction({title:'确认群发通知',description:'将向' + (receiver.value === 'all' ? '全站用户' : '所有普通用户') + '发送这条通知，确认发送？',confirmText:'发送通知'})) return;
+        var result = await api('POST','/api/admin/notifications',Object.fromEntries(new FormData(form)));
+        showMessage('已向 ' + result.sent + ' 位用户发送通知');
+      } catch (error) { formError(form,error.message); }
+      finally { button.disabled = false; }
+    });
+  });
+  document.querySelectorAll('form[data-action="admin-add-closet"]').forEach(function (form) {
+    on(form, 'submit', async function (event) {
+      event.preventDefault(); var button = form.querySelector('[type="submit"]'); button.disabled = true;
+      try { var result = await api('POST','/api/admin/closet/' + form.dataset.owner,{tid:Number(form.elements.tid.value)}); showMessage(result.message); reloadLater(); }
+      catch (error) { button.disabled = false; showMessage(error.message,true); }
+    });
+  });
   document.querySelectorAll('form[data-action="texture-model"]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    on(form, 'submit', function (event) {
       event.preventDefault();
       var button = form.querySelector('[type="submit"]');
       button.disabled = true;
@@ -340,22 +387,23 @@
     });
   });
   document.querySelectorAll('form[data-action="save-description"]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    on(form, 'submit', function (event) {
       event.preventDefault();
+      var submit = form.querySelector('[type="submit"]'); submit.disabled = true;
       api('PUT', '/api/skinlib/' + form.dataset.tid + '/description', {
         description: form.querySelector('[name="description"]').value,
       }).then(function (data) {
         showMessage(data.message || '已保存');
-        reloadLater();
+        document.getElementById('texture-description').innerHTML = data.html || '<p class="text-muted-foreground">暂无描述</p>';
       }).catch(function (error) {
         showMessage(error.message, true);
-      });
+      }).finally(function () { submit.disabled = false; });
     });
   });
 
   /* --- Report form ----------------------------------------------------------- */
   document.querySelectorAll('form[data-action="submit-report"]').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
+    on(form, 'submit', function (event) {
       event.preventDefault();
       api('POST', '/api/skinlib/' + form.dataset.tid + '/report', {
         reason: form.querySelector('[name="reason"]').value,
@@ -392,13 +440,13 @@
       estimate.classList.toggle('text-destructive', insufficient);
       estimate.classList.toggle('text-muted-foreground', !insufficient);
     }
-    uploadFile.addEventListener('change', function () {
+    on(uploadFile, 'change', function () {
       var file = uploadFile.files && uploadFile.files[0];
       if (file && !uploadName.value.trim()) uploadName.value = file.name.replace(/\.png$/i, '').slice(0, 50);
     });
-    uploadForm.addEventListener('change', updateUploadEstimate);
+    on(uploadForm, 'change', updateUploadEstimate);
     updateUploadEstimate();
-    uploadForm.addEventListener('submit', function (event) {
+    on(uploadForm, 'submit', function (event) {
       event.preventDefault();
       var errorElement = document.getElementById('upload-error');
       if (errorElement) errorElement.classList.add('hidden');
@@ -410,10 +458,10 @@
         .then(function (response) { return response.json(); })
         .then(function (result) {
           if (result.code === 0 && result.redirect) {
-            window.location.href = result.redirect;
+            navigate(result.redirect);
           } else if (result.code === 2 && result.redirect) {
             showMessage(result.message || '该材质已存在');
-            window.location.href = result.redirect;
+            navigate(result.redirect);
           } else {
             throw new Error(result.message || '上传失败');
           }
@@ -428,4 +476,7 @@
         });
     });
   }
+  }
+  window.AppActions={mount:mount,unmount:function(){if(active)active.abort();}};
+  if(!window.SiteNavigation || !window.SiteNavigation.isRendering)mount();
 })();

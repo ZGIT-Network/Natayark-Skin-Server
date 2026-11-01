@@ -11,9 +11,14 @@
     <div><div class="stat-label">材质</div><div class="stat-value"><%= stats.textures %></div></div>
   </a>
   <a href="/admin/reports" class="stat-card">
-    <div><div class="stat-label">举报处理</div><div class="stat-value">查看</div></div>
+    <div><div class="stat-label">待处理举报</div><div class="stat-value"><%= stats.pending %></div></div>
   </a>
 </div>
+
+<section class="card mt-5"><div class="card-header"><div><h2 class="card-title">近 31 天</h2><p class="card-description">新增用户与材质上传 · 材质储存约 <%= (Number(stats.storage) / 1024).toFixed(1) %> MB</p></div><div class="chart-legend"><span>新增用户 <strong><%= chart.data[0].reduce((a,b) => a + b,0) %></strong></span><span>上传材质 <strong><%= chart.data[1].reduce((a,b) => a + b,0) %></strong></span></div></div>
+  <% const chartMax = Math.max(1,...chart.data.flat()); %><div class="activity-chart" role="img" aria-label="近 31 天每日新增用户和上传材质，明细可在下方展开查看"><% for (let index = 0; index < chart.xAxis.length; index++) { %><div class="chart-group" title="<%= chart.xAxis[index] %>：新增用户 <%= chart.data[0][index] %>，上传材质 <%= chart.data[1][index] %>"><span style="height:<%= chart.data[0][index] / chartMax * 100 %>%"></span><span style="height:<%= chart.data[1][index] / chartMax * 100 %>%"></span></div><% } %></div><div class="chart-axis"><span><%= chart.xAxis[0] %></span><span><%= chart.xAxis.at(-1) %></span></div>
+  <details class="chart-details"><summary>查看每日明细</summary><div class="table-wrap"><table class="table"><thead><tr><th>日期</th><th>新增用户</th><th>上传材质</th></tr></thead><tbody><% for (let index = 30; index >= 0; index--) { %><tr><td><%= chart.xAxis[index] %></td><td><%= chart.data[0][index] %></td><td><%= chart.data[1][index] %></td></tr><% } %></tbody></table></div></details>
+</section>
 
 <div class="mt-5 grid gap-5 lg:grid-cols-3">
   <section class="card lg:col-span-2">
@@ -46,6 +51,8 @@
     <div class="card-header"><div><h2 class="card-title">快捷入口</h2></div></div>
     <div class="card-content grid gap-2">
       <a href="/admin/settings" class="btn btn-outline justify-start">站点设置</a>
+      <a href="/admin/notifications" class="btn btn-outline justify-start">发送站内通知</a>
+      <a href="/admin/status" class="btn btn-outline justify-start">系统状态</a>
       <a href="/admin/clients" class="btn btn-outline justify-start">OAuth / OIDC 客户端</a>
       <a href="/admin/translations" class="btn btn-outline justify-start">语言覆盖</a>
       <a href="/admin/ygg-log" class="btn btn-outline justify-start">Yggdrasil 日志</a>

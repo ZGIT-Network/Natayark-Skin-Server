@@ -1,0 +1,7 @@
+<% if (pages > 1) { const pageHref = (number) => { const params = new URLSearchParams(query || {}); params.set('page',String(number)); return path + '?' + params.toString(); }; %>
+<nav class="pagination mt-5" aria-label="分页">
+  <% if (page > 1) { %><a class="page-link" href="<%= pageHref(page - 1) %>" aria-label="上一页"><%- icon('chevron-left') %></a><% } %>
+  <% for (let number = Math.max(1,page - 2); number <= Math.min(pages,page + 2); number++) { %><a class="page-link <%= page === number ? 'active' : '' %>" href="<%= pageHref(number) %>" <%- page === number ? 'aria-current="page"' : '' %>><%= number %></a><% } %>
+  <% if (page < pages) { %><a class="page-link" href="<%= pageHref(page + 1) %>" aria-label="下一页"><%- icon('chevron-right') %></a><% } %>
+</nav>
+<% } %>

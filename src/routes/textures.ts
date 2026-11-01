@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { ROOT_DIR } from '../config.js';
 import sharp from 'sharp';
+import {resolveUserAvatar} from '../services/avatar.js';
 
 async function cacheHeader(reply: any): Promise<void> {
   const seconds = await getOptionInt('cache_expire_time', 31536000);
@@ -101,12 +102,12 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
   });
 
   // Avatars (legacy /avatar/*: head-only, 2d flat or ?3d isometric) ----------
-  const avatarFromTexture = async (texture: Texture | null, request: any, reply: any) => {
+  const avatarFromTexture = async (texture: Texture | null, request: any, reply: any,mutable=false) => {
     const query = request.query as Record<string, string>;
     const size = clampSize(query?.size, 1024);
     const mode = query?.['3d'] !== undefined ? '3d' : '2d';
     if (texture && texture.type !== 'steve' && texture.type !== 'alex') return reply.code(422).send();
-    await cacheHeader(reply);
+    if(mutable)reply.header('Cache-Control','public, max-age=0, must-revalidate');else await cacheHeader(reply);
     if (!texture) {
       return sendPng(reply, pngToBuffer(defaultAvatar(size, mode)));
     }
@@ -134,14 +135,14 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
 
   app.get('/avatar/user/:uid', async (request, reply) => {
     const { uid } = request.params as { uid: string };
-    const user = await queryOne<any>('SELECT avatar, email FROM users WHERE uid = ?', [parseInt(uid, 10)]);
-    if (!user) return sendPng(reply, pngToBuffer(defaultAvatar(clampSize((request.query as any)?.size, 1024), (request.query as any)?.['3d'] !== undefined ? '3d' : '2d')));
-    if (!user.avatar && await pluginEnabled('gravatar')) {
-      const hash = crypto.createHash('md5').update(user.email.trim().toLowerCase()).digest('hex');
+    const avatar=await resolveUserAvatar(parseInt(uid,10));
+    reply.header('Cache-Control','public, max-age=0, must-revalidate');
+    if(!avatar)return avatarFromTexture(null,request,reply,true);
+    if (!avatar.texture && await pluginEnabled('gravatar')) {
+      const hash = crypto.createHash('md5').update(avatar.email.trim().toLowerCase()).digest('hex');
       return reply.redirect(`https://weavatar.com/avatar/${hash}?s=${clampSize((request.query as any)?.size)}`);
     }
-    const texture = user.avatar > 0 ? await findTextureByTid(user.avatar) : null;
-    return avatarFromTexture(texture, request, reply);
+    return avatarFromTexture(avatar.texture, request, reply,true);
   });
 
   app.get('/avatar/hash/:hash', async (request, reply) => {
@@ -250,12 +251,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
   });
 }
 
-async function pluginEnabled(name: string): Promise<boolean> {
-  try {
-    const plugins = JSON.parse(await getOption('plugins_enabled', '{}'));
-    return Array.isArray(plugins) ? plugins.includes(name) : Object.hasOwn(plugins, name);
-  } catch { return false; }
-}
+import { pluginEnabled } from '../services/plugins.js';
 
 function clampSize(value: unknown, max = 512): number {
   const n = parseInt(String(value ?? '100'), 10);

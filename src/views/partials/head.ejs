@@ -26,8 +26,8 @@
     root.classList.toggle('dark', mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   })();
 </script>
-<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/app.css?v=8">
 <% if (typeof themeCss !== 'undefined') { %><style id="site-theme"><%- themeCss %></style><% } %>
 <% if (typeof customCss !== 'undefined' && customCss) { %>
-<style><%- customCss %></style>
+<style data-site-custom-css><%- customCss %></style>
 <% } %>

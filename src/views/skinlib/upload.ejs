@@ -23,6 +23,7 @@
           <input class="input" id="name" name="name" required maxlength="50">
         </label>
 
+        <label class="field"><span class="label">材质描述（可选）</span><textarea class="textarea" name="description" rows="4" <%- descriptionMaxLength ? 'maxlength="' + descriptionMaxLength + '"' : '' %> placeholder="支持 Markdown，填写作者、来源及使用说明。"></textarea></label>
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="field">
             <span class="label"><%= t('skinlib.type') %></span>
@@ -73,6 +74,7 @@
   </section>
 
   <aside class="space-y-5">
+  <% if (contentPolicyHtml) { %><section class="card"><div class="card-header"><h2 class="card-title">内容政策</h2></div><div class="card-content prose text-sm"><%- contentPolicyHtml %></div></section><% } %>
   <div class="card" data-upload-viewer>
     <%- include('../partials/previewer', { skinUrl: '', capeUrl: '', previewModel: 'default', flatSkin: '', flatCape: '' }) %>
   </div>
@@ -90,5 +92,5 @@
   </aside>
 </div>
 
-<script src="/vendor/skinview3d.js" defer></script>
+<script src="/vendor/skinview3d.js?v=8" defer></script>
 <%- include('../partials/layout-bottom') %>

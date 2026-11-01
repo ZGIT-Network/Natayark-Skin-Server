@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import Fastify from 'fastify';
 import formbody from '@fastify/formbody';
+import {fixtureSchema} from './fixture-schema.js';
 
 const prefix = `test_addon_${crypto.randomBytes(4).toString('hex')}_`;
 process.env.DB_TABLE_PREFIX = prefix;
@@ -29,7 +30,7 @@ app.addHook('onRequest', async (request: any) => {
   request.checkCsrf = (value: unknown) => value === 'fixture';
 });
 try {
-  for (const table of tables) { await exec(`CREATE TABLE \`${table}\` LIKE \`${table}\``); created.push(table); }
+  for (const table of tables) { await exec(fixtureSchema(table)); created.push(table); }
   await exec(`CREATE TABLE \`${prefix}mcn_registration_rewards\` (uid INT UNSIGNED PRIMARY KEY,code_id INT UNSIGNED NOT NULL,sharer INT NOT NULL,created_at DATETIME NOT NULL) ENGINE=InnoDB`);
   created.push('mcn_registration_rewards');
   for (const [key, value] of Object.entries({ plugins_enabled: JSON.stringify({ 'share-registration-link': { version: 'fixture' } }), reg_link_sharer_score: '50', reg_link_sharee_score: '10', user_initial_score: '100', register_with_player_name: '0', require_verification: '0' })) await setOption(key, value);

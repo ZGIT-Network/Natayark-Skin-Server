@@ -89,8 +89,12 @@
         </div>
       </div>
       <div class="card-content space-y-2">
+        <button type="button" draggable="true" class="btn btn-outline h-auto min-h-10 w-full cursor-grab whitespace-normal py-2.5 active:cursor-grabbing" data-launcher-drag="<%= launcherApiRoot %>" data-copy="#ygg-url" aria-describedby="launcher-drag-help">
+          <%- icon('move','size-4 shrink-0') %><span><%= t('user.launcher-drag') %></span>
+        </button>
+        <p class="field-hint" id="launcher-drag-help"><%= t('user.launcher-drag-help') %></p>
         <div class="flex gap-1.5">
-          <input class="input font-mono text-xs" id="ygg-url" readonly value="<%= siteUrl %>/api/yggdrasil">
+          <input class="input min-w-0 font-mono text-xs" id="ygg-url" readonly value="<%= launcherApiRoot %>" aria-label="<%= t('user.launcher-api-root') %>">
           <button type="button" class="btn btn-outline btn-icon" data-copy="#ygg-url" aria-label="复制">
             <%- icon('copy') %>
           </button>
@@ -98,6 +102,19 @@
         <a href="/user/config" class="inline-flex items-center gap-1 text-xs font-medium text-brand-strong hover:underline dark:text-brand">
           <%= t('footer.launcher-config') %><%- icon('arrow-right', 'size-3') %>
         </a>
+      </div>
+    </section>
+    <section class="card" data-minecraft-guide>
+      <div class="card-header flex-wrap gap-2">
+        <h2 class="card-title"><%= t('general.verification') %></h2>
+        <span class="badge <%= minecraftVerified ? 'badge-success' : 'badge-outline' %>" data-verification-status="<%= minecraftVerified ? 'verified' : minecraftVerificationConfigured ? 'unverified' : 'unavailable' %>"><%= t(minecraftVerified ? 'user.verification-verified' : minecraftVerificationConfigured ? 'user.verification-unverified' : 'user.verification-unavailable-label') %></span>
+      </div>
+      <div class="card-content space-y-3">
+        <p class="text-sm leading-relaxed text-muted-foreground"><%= t(minecraftVerified ? 'user.verification-complete-help' : minecraftVerificationConfigured ? 'user.verification-help' : 'user.verification-unavailable-help') %></p>
+        <% if (!minecraftVerified && minecraftVerificationConfigured && minecraftVerificationReward > 0) { %>
+        <p class="text-sm" data-verification-reward><%= t('user.verification-reward').replace(':score', minecraftVerificationReward) %></p>
+        <% } %>
+        <a href="/user/verification" class="btn btn-outline h-auto min-h-10 w-full whitespace-normal py-2"><span><%= t(minecraftVerified ? 'user.verification-details' : minecraftVerificationConfigured ? 'user.verification-start' : 'user.verification-instructions') %></span><%- icon('arrow-right','size-4 shrink-0') %></a>
       </div>
     </section>
   </aside>

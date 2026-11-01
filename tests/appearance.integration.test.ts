@@ -7,11 +7,11 @@ import { exec, query, pool } from '../src/db.js';
 import { registerUser } from '../src/services/user.js';
 import { setSessionCookie } from '../src/services/session.js';
 import { APPEARANCE_DEFAULTS } from '../src/services/theme.js';
-import { getOption, loadOptions } from '../src/services/option.js';
+import { getOption, loadOptions, setOption } from '../src/services/option.js';
 
 test('admin appearance: validated persistence, homepage layouts and public isolation', { skip: !config.db.tablePrefix.startsWith('dev_') }, async t => {
   const app = await createApp();
-  const keys = [...Object.keys(APPEARANCE_DEFAULTS), 'home_pic_url','fixed_bg','hide_intro','transparent_navbar'];
+  const keys = [...Object.keys(APPEARANCE_DEFAULTS), 'home_pic_url','fixed_bg','hide_intro','transparent_navbar','copyright_text'];
   const placeholders = keys.map(() => '?').join(',');
   const before = await query<{ id:number; option_name:string; option_value:string }>(`SELECT id,option_name,option_value FROM options WHERE option_name IN (${placeholders})`, keys);
   let uid = 0, name = 'Theme' + crypto.randomBytes(4).toString('hex'), cookie = '';
@@ -35,15 +35,19 @@ test('admin appearance: validated persistence, homepage layouts and public isola
       assert.match(String(invalid.headers.location), /appearance-invalid/);
       const invalidUrl = await post({theme_primary:'#ff0000',home_pic_url:'javascript:alert(1)'});
       assert.match(String(invalidUrl.headers.location), /appearance-invalid/);
+      const invalidRadius = await post({theme_primary:'#ff0000',theme_radius:'999px'});
+      assert.match(String(invalidRadius.headers.location), /appearance-invalid/);
       assert.equal(await getOption('theme_primary'), old);
     });
     await t.test('saved colors and layout render on subsequent public requests', async () => {
-      const saved = await post({theme_primary:'#7847bf',theme_primary_dark:'#c9adff',theme_background:'#f7f3fc',theme_background_dark:'#1c1628',theme_default_mode:'system',home_layout:'minimal',home_show_recent:'false',home_pic_url:'/app/bg.webp'});
+      const saved = await post({theme_primary:'#7847bf',theme_primary_dark:'#c9adff',theme_background:'#f7f3fc',theme_background_dark:'#1c1628',theme_default_mode:'system',theme_radius:'large',home_layout:'minimal',home_show_recent:'false',home_pic_url:'/app/bg.webp'});
       assert.equal(saved.headers.location, '/admin/settings?saved=1#appearance');
       const page = await app.inject('/');
       assert.equal(page.statusCode, 200);
       assert.match(page.body, /--primary:#7847bf/);
       assert.match(page.body, /--primary:#c9adff/);
+      assert.match(page.body, /--radius:12px/);
+      assert.equal(await getOption('theme_radius'), 'large');
       assert.match(page.body, /home-page home-minimal/);
       assert.doesNotMatch(page.body, /id="recent-title"/);
       assert.match(page.body, /prefers-color-scheme: dark/);
@@ -61,6 +65,18 @@ test('admin appearance: validated persistence, homepage layouts and public isola
       const reloaded = await app.inject({url:'/admin/settings',headers:{cookie}});
       assert.match(reloaded.body, /value="#7847bf"/);
       assert.match(reloaded.body, /value="minimal" checked/);
+      assert.match(reloaded.body, /value="large" data-radius="12" selected/);
+    });
+    await t.test('operator copyright and project attribution coexist on every page shell', async () => {
+      await setOption('copyright_text', 'Operator copyright fixture');
+      for (const [url, authenticated] of [['/',false], ['/skinlib',false], ['/auth/login',false], ['/connect/device',false], ['/user',true], ['/admin/settings',true]] as const) {
+        const page = await app.inject({url,headers: authenticated ? {cookie} : {}});
+        assert.equal(page.statusCode, 200, url);
+        assert.match(page.body, /Operator copyright fixture/, url);
+        assert.match(page.body, /class="product-credit">Powered by /, url);
+        assert.match(page.body, /href="https:\/\/github\.com\/ZGIT-Network\/Natayark-Skin-Server" target="_blank" rel="noopener noreferrer"/, url);
+        assert.equal((page.body.match(/class="product-credit"/g) ?? []).length, 1, url);
+      }
     });
   } finally {
     await exec(`DELETE FROM options WHERE option_name IN (${placeholders})`, keys);

@@ -22,7 +22,7 @@ const names: Record<string, string> = {
   upload: 'CloudUploadOutline', 'user-plus': 'PersonAddOutline', 'user-round': 'PersonOutline',
   users: 'PeopleOutline', wallet: 'WalletOutline', wrench: 'ConstructOutline', x: 'CloseOutline',
   monitor: 'DesktopOutline', pause: 'PauseOutline', play: 'PlayOutline', stop: 'StopOutline',
-  run: 'WalkOutline', layers: 'LayersOutline', camera: 'CameraOutline', expand: 'ExpandOutline',
+  run: 'WalkOutline', layers: 'LayersOutline', camera: 'CameraOutline', expand: 'ExpandOutline',move:'MoveOutline',
 };
 
 /**

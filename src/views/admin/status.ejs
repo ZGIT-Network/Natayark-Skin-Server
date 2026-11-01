@@ -1,0 +1,13 @@
+<%- include('../partials/layout-user-top', { title:'系统状态', scope:'admin', pageDescription:'查看应用运行环境和服务状态。' }) %>
+<div class="grid gap-5 lg:grid-cols-2"><section class="card"><div class="card-header"><h2 class="card-title">应用环境</h2></div><dl class="rule-list"><div><dt>系统</dt><dd>Natayark SkinServer</dd></div><div><dt><%= t('status.application-version') %></dt><dd><code data-app-version><%= runtime.version %></code></dd></div><div><dt>Node.js</dt><dd><%= runtime.node %></dd></div><div><dt>操作系统</dt><dd><%= runtime.platform %></dd></div><div><dt>本次运行</dt><dd><%= runtime.uptime %> 分钟</dd></div><div><dt>数据库</dt><dd>MySQL <%= runtime.database %></dd></div></dl></section>
+<section class="card"><div class="card-header"><h2 class="card-title">服务检查</h2></div><dl class="rule-list"><div><dt>数据库连接</dt><dd><span class="badge badge-success">正常</span></dd></div><div><dt>材质目录读写</dt><dd><span class="badge <%= runtime.textureWritable ? 'badge-success' : 'badge-warning' %>"><%= runtime.textureWritable ? '正常' : '需要检查目录权限' %></span></dd></div><div><dt>邮件服务</dt><dd><span class="badge badge-outline"><%= mailConfigured ? '已配置' : '未配置' %></span></dd></div><div><dt>Yggdrasil Connect</dt><dd><a class="text-brand hover:underline" href="/.well-known/openid-configuration" target="_blank" rel="noopener">内置服务 · 查看发现文档</a></dd></div></dl><p class="rule-note">邮件状态表示配置是否齐全，实际投递结果取决于 SMTP 服务。</p></section></div>
+<section class="card mt-5" data-update-check aria-labelledby="updates-title">
+  <div class="card-header flex-wrap gap-4">
+    <div>
+      <h2 class="card-title" id="updates-title"><%= t('status.updates') %></h2>
+      <p class="card-description" id="updates-description"><%= t('status.updates-unavailable') %></p>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" data-check-updates disabled aria-describedby="updates-description"><%- icon('refresh-cw') %><%= t('status.check-updates') %></button>
+  </div>
+</section>
+<%- include('../partials/layout-bottom') %>

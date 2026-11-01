@@ -76,6 +76,7 @@
   </section>
 </div>
 
+<section class="card mt-5"><div class="card-header"><div><h2 class="card-title">个人访问令牌</h2><p class="card-description">为自己使用的脚本授权，按需选择权限。</p></div></div><form class="card-content space-y-4" id="create-personal-token"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><% for (const scope of availableScopes) { %><label class="checkbox-row"><input class="checkbox" type="checkbox" name="scopes" value="<%= scope.id %>"><span><%= scope.description %></span></label><% } %></div><button class="btn btn-outline" type="submit"><%- icon('key-round') %>创建令牌</button><div class="space-y-2" data-token-result hidden><label class="field"><span class="label">新访问令牌</span><textarea class="textarea font-mono text-xs" rows="4" readonly data-new-token></textarea><span class="field-hint">仅在本次创建后显示。请妥善保存，离开页面后会清空。</span></label><button type="button" class="btn btn-outline btn-sm" data-copy-new-token><%- icon('copy') %>复制令牌</button></div></form></section>
 <% if (tokens && tokens.length) { %>
 <div class="mt-5">
   <div class="mb-3 flex items-center justify-between gap-3">
@@ -84,14 +85,15 @@
   <div class="card overflow-hidden">
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>名称</th><th>权限范围</th><th>创建时间</th><th>过期时间</th></tr></thead>
+        <thead><tr><th>标识</th><th>权限范围</th><th>创建时间</th><th>过期时间</th><th>操作</th></tr></thead>
         <tbody>
           <% for (const token of tokens) { %>
           <tr>
-            <td><%= token.name %></td>
+            <td><code class="text-xs"><%= token.id.slice(0,12) %>…</code></td>
             <td><code class="text-xs text-muted-foreground"><%= (token.scopes || []).join(' ') %></code></td>
             <td class="text-muted-foreground"><%= token.created_at %></td>
             <td class="text-muted-foreground"><%= token.expires_at || '—' %></td>
+            <td><button class="btn btn-outline btn-xs" data-revoke-token="<%= token.id %>">撤销</button></td>
           </tr>
           <% } %>
         </tbody>
@@ -101,5 +103,5 @@
 </div>
 <% } %>
 
-<script src="/js/applications.js" defer></script>
+<script src="/js/applications.js?v=8" defer></script>
 <%- include('../partials/layout-bottom') %>

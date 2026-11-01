@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isIP } from 'node:net';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT_DIR = path.resolve(__dirname, '..');
@@ -17,12 +18,23 @@ function envBool(key: string, fallback: boolean): boolean {
   if (v === undefined) return fallback;
   return v === '1' || v.toLowerCase() === 'true';
 }
+export function parseTrustProxy(raw:string|undefined):boolean|string[]{
+  if(!raw||['false','0'].includes(raw.toLowerCase()))return false;
+  if(['true','1'].includes(raw.toLowerCase()))return true;
+  const values=raw.split(',').map(value=>value.trim()).filter(Boolean);
+  if(!values.length||values.some(value=>{
+    if(['loopback','linklocal','uniquelocal'].includes(value))return false;
+    const [ip,bits,...rest]=value.split('/'),version=isIP(ip);
+    return !version||rest.length>0||bits!==undefined&&(!/^\d+$/.test(bits)||Number(bits)>(version===4?32:128));
+  }))throw new Error('TRUST_PROXY must be a boolean or a list of trusted IP/CIDR ranges');
+  return values;
+}
 
 export const config = {
   port: envInt('PORT', 3000),
   host: envStr('HOST', '0.0.0.0'),
   appKey: envStr('APP_KEY', 'dev-insecure-key'),
-  trustProxy: envBool('TRUST_PROXY', false),
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   publicOrigin: envStr('PUBLIC_ORIGIN').replace(/\/$/, ''),
   oidcIssuer: envStr('OIDC_ISSUER').replace(/\/$/, ''),
   legacyDir: envStr('LEGACY_DIR'),

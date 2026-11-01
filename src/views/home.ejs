@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html lang="<%= htmlLang %>" class="<%= darkMode ? 'dark' : '' %>">
 <head><%- include('partials/head') %></head>
-<body class="home-page home-<%= homeLayout %>">
+<body class="home-page home-<%= homeLayout %>" data-page-shell="home" data-user-id="<%= user ? user.uid : 0 %>">
 <header class="home-header <%= homeLayout === 'classic' && transparentNavbar ? 'home-header-overlay' : '' %>">
   <div class="home-container home-header-inner">
     <%- include('partials/brand') %>
@@ -77,12 +77,13 @@
   </div>
 </main>
 
-<footer class="home-footer"><div class="home-container"><%- include('partials/copyright') %></div></footer>
+<footer class="home-footer"><div class="home-container footer-content"><div><%- include('partials/copyright') %></div><%- include('partials/powered-by') %></div></footer>
 <script>
   window.__CSRF = <%- JSON.stringify(csrf) %>;
   window.__USER_ID = <%- JSON.stringify(user ? user.uid : 0) %>;
 </script>
-<script src="/js/ui.js"></script>
+<script src="/js/ui.js?v=8"></script>
+<script src="/js/navigation.js?v=8"></script>
 <% if (customJs) { %><script><%- customJs %></script><% } %>
 </body>
 </html>

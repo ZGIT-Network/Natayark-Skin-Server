@@ -1,0 +1,10 @@
+<%- include('../partials/layout-user-top', { title: '发送站内通知', scope:'admin', pageDescription: '向指定用户或用户组发送站内消息。' }) %>
+<div class="editor-layout"><section class="card"><div class="card-header"><div><h2 class="card-title">新通知</h2><p class="card-description">发送后，接收人可以在站内通知中查看。</p></div></div><form class="card-content space-y-5" data-action="send-notification">
+  <label class="field"><span class="label">接收对象</span><span class="select-wrap"><select class="select" name="receiver"><option value="uid">指定 UID</option><option value="email">指定邮箱</option><option value="normal">所有普通用户</option><option value="all">全站用户</option></select></span></label>
+  <label class="field" data-recipient="uid"><span class="label">用户 UID</span><input class="input" name="uid" type="number" min="1" placeholder="例如 123"></label>
+  <label class="field" data-recipient="email" hidden><span class="label">用户邮箱</span><input class="input" name="email" type="email" placeholder="user@example.com"></label>
+  <label class="field"><span class="label">标题</span><input class="input" name="title" required maxlength="100" placeholder="简要说明通知事项"></label>
+  <label class="field"><span class="label">正文</span><textarea class="textarea" name="content" rows="9" maxlength="10000" placeholder="支持 Markdown，可填写说明及相关链接。"></textarea></label>
+  <p class="hidden text-sm text-destructive" data-form-error></p><div class="flex justify-end"><button class="btn btn-primary" type="submit"><%- icon('mail') %>发送通知</button></div>
+</form></section><aside class="card h-fit"><div class="card-header"><h2 class="card-title">发送说明</h2></div><div class="card-content space-y-3 text-sm text-muted-foreground"><p>指定 UID 或邮箱时，只发送给对应账户。</p><p>选择用户组时，发送前会显示确认，避免误发。</p><a class="text-brand hover:underline" href="/admin/users">查找用户 <%- icon('arrow-right','inline size-3') %></a></div></aside></div>
+<%- include('../partials/layout-bottom') %>

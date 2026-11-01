@@ -17,12 +17,14 @@ import { registerApplicationRoutes } from './routes/applications.js';
 import { registerSharingRoutes } from './routes/sharing.js';
 import { registerTranslationRoutes } from './routes/translations.js';
 import { registerMojangRoutes } from './routes/mojang.js';
+import { registerManagementRoutes } from './routes/management.js';
 import { icon } from './icons.js';
 import { loadSession, csrfToken, checkCsrf, setSessionCookie, clearSessionCookie } from './services/session.js';
 import { loadOptions } from './services/option.js';
 import { ensureSigningKey, getSystemClientId } from './services/token.js';
 import { loadPlayerNameRules } from './util.js';
-import { translate, type Locale } from './i18n.js';
+import { translate } from './i18n.js';
+import { requestLocale } from './services/locale.js';
 import { ROOT_DIR } from './config.js';
 import { captureApiHandlers, registerCompatRoutes } from './routes/compat.js';
 import { pageContext } from './routes/page-context.js';
@@ -122,14 +124,11 @@ app.addHook('onSend', async (_request, reply, payload) => {
 app.addHook('onRequest', async (request, reply) => {
   await loadSession(request, reply);
   (request as any).csrfToken = () => csrfToken((request as any).session);
-  (request as any).checkCsrf = (token?: string) => checkCsrf(request, token);
-  (request as any).setSession = (uid: number) => setSessionCookie(reply, uid);
+  (request as any).checkCsrf = (token?: string) => checkCsrf(request, token ?? String((request.body as any)?._token || request.headers['x-csrf-token'] || ''));
+  (request as any).setSession = (uid: number,remember?:boolean) => setSessionCookie(reply, uid,remember);
   (request as any).clearSession = () => clearSessionCookie(reply, request);
   (request as any).t = (key: string) => {
-    const override = (request.query as any)?.lang;
-    const locale: Locale = override === 'en' || override === 'zh_CN' ? override
-      : ((request as any).currentUser?.locale as Locale) === 'en' ? 'en' : 'zh_CN';
-    return translate(locale, key);
+    return translate(requestLocale(request), key);
   };
   reply.header('X-Powered-By', 'Natayark SkinServer');
 });
@@ -189,6 +188,7 @@ await registerOidcRoutes(app);
 await registerApiRoutes(app);
 await registerCompatRoutes(app, handlers);
 await registerWebRoutes(app);
+await registerManagementRoutes(app, handlers);
 
 
   await loadOptions(true);

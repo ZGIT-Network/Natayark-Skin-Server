@@ -5,6 +5,8 @@ import { config } from '../config.js';
 import { getOption, getOptionBool, getOptionInt } from './option.js';
 import { sha256Hex } from '../util.js';
 import { PNG } from 'pngjs';
+import { queueTextureProfileRefresh } from './integrations.js';
+import { parsePng } from './png.js';
 
 export type Texture = {
   tid: number;
@@ -112,7 +114,7 @@ export async function uploadTexture(
   uploader: UserLike,
   meta: TextureMeta,
   file: { data: Buffer; name: string },
-  options: { source?: 'web' | 'yggdrasil' } = {}
+  options: { source?: 'web' | 'yggdrasil'; description?: string } = {}
 ): Promise<UploadResult> {
   const maxFileSize = await getOptionInt('max_upload_file_size', 1024);
   if (file.data.length > maxFileSize * 1024) return { ok: false, reason: 'file-too-large' };
@@ -147,6 +149,7 @@ export async function uploadTexture(
       [meta.name, type, hash, kbSize, uploader.uid, meta.isPublic ? 1 : 0, nowString()]
     );
     await exec('INSERT INTO user_closet (user_uid, texture_tid, item_name) VALUES (?, ?, ?)', [uploader.uid, tid, meta.name]);
+    if (options.description) await setDescription(tid, options.description);
     await exec('UPDATE users SET score = score - ? WHERE uid = ?', [cost, uploader.uid]);
     return { ok: true, texture: (await findTextureByTid(tid))!, cost, duplicate: false };
   });
@@ -163,7 +166,7 @@ export async function validateTexturePng(data: Buffer, type: 'steve' | 'alex' | 
   if (!declaredWidth || !declaredHeight || declaredWidth > 4096 || declaredHeight > 4096 || declaredWidth * declaredHeight > 8_388_608) return { ok: false, reason: 'image-too-large' };
   let png: PNG;
   try {
-    png = PNG.sync.read(data);
+    png = parsePng(data);
   } catch {
     return { ok: false, reason: 'invalid-image' };
   }
@@ -186,6 +189,7 @@ export async function deleteTexture(texture: Texture): Promise<void> {
     await lockUsers([texture.uploader]);
     const current = await queryOne<Texture>('SELECT * FROM textures WHERE tid = ? FOR UPDATE', [texture.tid]);
     if (!current) return; // repeated DELETE must not refund twice
+    await queueTextureProfileRefresh(current.tid);
     const delta = deletionScoreDelta(current, rules);
     if (delta) await exec('UPDATE users SET score = score + ? WHERE uid = ?', [delta, current.uploader]);
     // Core CleanUpCloset refunds other users, while the uploader's storage refund
@@ -220,6 +224,7 @@ export async function setTexturePrivacy(texture: Texture, isPublic: boolean): Pr
     const delta = privacyScoreDelta(current, rules);
     const user = await queryOne<{ score: number }>('SELECT score FROM users WHERE uid = ?', [current.uploader]);
     if (!user || user.score + delta < 0) return { ok: false, reason: 'lack_score' };
+    await queueTextureProfileRefresh(current.tid);
     await exec('UPDATE users SET score = score + ? WHERE uid = ?', [delta, current.uploader]);
     await exec('UPDATE textures SET public = ? WHERE tid = ?', [isPublic ? 1 : 0, current.tid]);
     if (!isPublic) {
@@ -271,6 +276,7 @@ export async function closetRemove(uid: number, tid: number): Promise<void> {
   const texture = await findTextureByTid(tid);
   const rules = await economy();
   await withTransaction(async () => {
+    await queueTextureProfileRefresh(tid,uid);
     await lockUsers([uid, texture?.uploader ?? 0]);
     const current = await queryOne<Texture>('SELECT * FROM textures WHERE tid = ? FOR UPDATE', [tid]);
     const result = await exec('DELETE FROM user_closet WHERE user_uid = ? AND texture_tid = ?', [uid, tid]);

@@ -122,6 +122,7 @@ export type OAuthFlow = {
   provider: string; redirect: string; redirectUri?: string; verifier?: string; linkUid?: number;
   remote?: OAuthUserInfo; email?: string; nickname?: string; playerName?: string; ip?: string; share?: string;
   passwordHash?: string;
+  legacyUid?: number;
 };
 export async function createOAuthFlow(browserSid: string, stage: string, payload: OAuthFlow, ttl = 600): Promise<string> {
   const token = crypto.randomBytes(32).toString('base64url');

@@ -13,6 +13,8 @@
     'providers-invalid': '第三方登录配置无效：请检查 key、显示名称、端点与客户端凭据。',
     'local-login-required': '关闭邮箱密码登录前，至少需要配置一个第三方登录方式。',
     'appearance-invalid': '外观设置无效，请检查颜色、首页样式和图片地址。',
+    'description-limit': '描述字数上限必须是 0–65535 之间的整数。',
+    'recaptcha-invalid':'reCAPTCHA 需要有效的 Site key 和 Secret key；留空 Site key 使用本站图片验证码。',
   };
 %>
 <div class="alert alert-destructive mb-5" role="alert">
@@ -53,13 +55,16 @@
               <input class="input" name="site_description" value="<%= values.site_description %>">
             </label>
             <label class="field sm:col-span-2">
-              <span class="label">版权文字（支持 HTML）</span>
-              <input class="input" name="copyright_text" value="<%= values.copyright_text %>">
+              <span class="label">页脚版权与备案信息（支持 HTML）</span>
+              <textarea class="textarea" name="copyright_text" rows="4" placeholder="填写运营方版权、备案号及链接；也可以留空"><%= values.copyright_text %></textarea>
+              <span class="field-hint">此处内容由站点自行定义，留空时不显示。项目署名 Powered by Natayark Skin Server 会单独保留。</span>
             </label>
             <label class="field sm:col-span-2">
               <span class="label">首页公告（Markdown）</span>
               <textarea class="textarea" name="announcement" rows="6"><%= values.announcement %></textarea>
             </label>
+            <label class="field"><span class="label">材质描述字数上限</span><input class="input" name="textures_description_limit" type="number" min="0" max="65535" value="<%= values.textures_description_limit %>"><span class="field-hint">0 表示不额外限制字符数；实际容量取决于当前描述列。</span></label>
+            <label class="field sm:col-span-2"><span class="label">上传内容政策（Markdown）</span><textarea class="textarea" name="content_policy" rows="4" placeholder="可说明版权、内容范围及使用规则；留空则不展示。"><%= values.content_policy %></textarea></label>
           </div>
           <div class="card-footer"><button type="submit" class="btn btn-primary">保存设置</button></div>
         </section>
@@ -104,6 +109,9 @@
               <span class="label">每 IP 注册上限</span>
               <input class="input" name="regs_per_ip" type="number" value="<%= values.regs_per_ip %>">
             </label>
+            <label class="field"><span class="label">reCAPTCHA v2 Site key</span><input class="input" name="recaptcha_sitekey" value="<%= values.recaptcha_sitekey %>" autocomplete="off"><span class="field-hint">留空使用本站图片验证码；注册、找回密码和连续登录失败时验证。</span></label>
+            <label class="field"><span class="label">reCAPTCHA Secret key</span><input class="input" type="password" name="recaptcha_secretkey" placeholder="<%= recaptchaConfigured ? '已配置，留空保持不变' : 'Secret key' %>" autocomplete="new-password"><span class="field-hint">服务端密钥不会显示在页面中。</span></label>
+            <label class="field"><span class="label"><%= t('captcha.mode') %></span><span class="select-wrap"><select class="select" name="recaptcha_invisible"><option value="false" <%= values.recaptcha_invisible!=='true'&&values.recaptcha_invisible!=='1'?'selected':'' %>><%= t('captcha.checkbox') %></option><option value="true" <%= values.recaptcha_invisible==='true'||values.recaptcha_invisible==='1'?'selected':'' %>><%= t('captcha.invisible') %></option></select></span><span class="field-hint"><%= t('captcha.mode-help') %></span></label>
             <label class="field">
               <span class="label">注册初始积分</span>
               <input class="input" name="user_initial_score" type="number" value="<%= values.user_initial_score %>">
@@ -130,10 +138,13 @@
             <label class="field"><span class="label">公开材质 / KB</span><input class="input" name="score_per_storage" type="number" value="<%= values.score_per_storage %>"></label>
             <label class="field"><span class="label">私有材质 / KB</span><input class="input" name="private_score_per_storage" type="number" value="<%= values.private_score_per_storage %>"></label>
             <label class="field"><span class="label">衣柜单件消耗</span><input class="input" name="score_per_closet_item" type="number" value="<%= values.score_per_closet_item %>"></label>
-            <label class="field"><span class="label">公开上传奖励</span><input class="input" name="score_award_per_texture" type="number" value="<%= values.score_award_per_texture %>"></label>
+            <label class="field"><span class="label">上传奖励（公开 / 私有）</span><input class="input" name="score_award_per_texture" type="number" value="<%= values.score_award_per_texture %>"></label>
+            <label class="field"><span class="label">被他人收藏奖励</span><input class="input" name="score_award_per_like" type="number" value="<%= values.score_award_per_like %>"></label>
+            <label class="field"><span class="label">提交举报积分变动</span><input class="input" name="reporter_score_modification" type="number" value="<%= values.reporter_score_modification %>"><span class="field-hint">正数为奖励，负数为扣除；最终按审核结果结算。</span></label>
+            <label class="field"><span class="label">举报采纳额外奖励</span><input class="input" name="reporter_reward_score" type="number" value="<%= values.reporter_reward_score %>"></label>
             <label class="field"><span class="label">签到积分（min,max）</span><input class="input" name="sign_score" value="<%= values.sign_score %>"></label>
             <label class="field">
-              <span class="label">删除材质退还积分</span>
+              <span class="label">删除公开材质时扣回上传奖励</span>
               <span class="select-wrap">
                 <select class="select" name="take_back_scores_after_deletion">
                   <option value="true" <%= values.take_back_scores_after_deletion === 'true' ? 'selected' : '' %>>是</option>
@@ -141,6 +152,9 @@
                 </select>
               </span>
             </label>
+            <label class="field"><span class="label">移除材质时返还储存 / 收藏费用</span><span class="select-wrap"><select class="select" name="return_score"><option value="1" <%= ['true','1'].includes(values.return_score) ? 'selected' : '' %>>是</option><option value="0" <%= !['true','1'].includes(values.return_score) ? 'selected' : '' %>>否</option></select></span></label>
+            <label class="field"><span class="label">签到重置方式</span><span class="select-wrap"><select class="select" name="sign_after_zero"><option value="true" <%= ['true','1'].includes(values.sign_after_zero) ? 'selected' : '' %>>每天零点重置</option><option value="false" <%= !['true','1'].includes(values.sign_after_zero) ? 'selected' : '' %>>按小时计时</option></select></span></label>
+            <label class="field"><span class="label">签到间隔（小时）</span><input class="input" name="sign_gap_time" type="number" min="0" value="<%= values.sign_gap_time %>"></label>
           </div>
           <div class="card-footer"><button type="submit" class="btn btn-primary">保存设置</button></div>
         </section>

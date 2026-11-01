@@ -17,6 +17,7 @@ import {
 } from '../services/texture.js';
 import { getOptionInt } from '../services/option.js';
 import { yggLog } from '../services/ygglog.js';
+import { renderMarkdown, validateDescription } from '../services/content.js';
 
 function fail(reply: any, code: number, message: string) {
   return reply.code(code).send({ code: 1, message });
@@ -25,6 +26,7 @@ function fail(reply: any, code: number, message: string) {
 export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   // Session-auth guard for /api/* JSON endpoints only (Yggdrasil endpoints authenticate themselves).
   app.addHook('preHandler', async (request, reply) => {
+    if ((request.routeOptions.config as any)?.publicApi) return;
     const url = request.raw.url ?? '';
     if ((!url.startsWith('/api/') || url.startsWith('/api/yggdrasil')) && !(request.routeOptions.config as any)?.legacyWrite) return;
     if (!await authorizeApi(request, reply)) return reply;
@@ -169,11 +171,15 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const name = (meta.name ?? '').trim().slice(0, 50) || fileName.replace(/\.png$/i, '');
     const { textureNameValid } = await import('../services/texture.js');
     if (!(await textureNameValid(name))) return fail(reply, 400, '材质名称不符合规则');
+    let description: string;
+    try { description = await validateDescription(meta.description); }
+    catch (error: any) { return fail(reply, 422, error.message); }
 
     const result = await uploadTexture(
       { uid: request.currentUser!.uid, score: request.currentUser!.score },
       { name, type, isPublic: meta.public === '1' || meta.public === 'true' },
-      { data: file, name }
+      { data: file, name },
+      { description }
     );
     if (!result.ok) {
       const messages: Record<string, string> = {
@@ -224,8 +230,11 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const texture = await findTextureByTid(parseInt((request.params as any).tid, 10));
     if (!texture) return fail(reply, 404, '材质不存在');
     if (texture.uploader !== request.currentUser!.uid && !isAdmin(request.currentUser)) return fail(reply, 403, '无权修改该材质');
-    await setDescription(texture.tid, String(body.description ?? '').slice(0, 255));
-    return { code: 0, message: '描述已更新' };
+    let description: string;
+    try { description = await validateDescription(body.description); }
+    catch (error: any) { return fail(reply, 422, error.message); }
+    await setDescription(texture.tid, description);
+    return { code: 0, message: '描述已更新', html: renderMarkdown(description) };
   });
 
   app.post('/api/skinlib/:tid/report', async (request, reply) => {

@@ -1,4 +1,7 @@
 import { registerAuthRoutes, requestEmailChange } from './auth.js';
+import {config} from '../config.js';
+import {isLocale} from '../i18n.js';
+import {requestLocale,saveLocale,localeReturnTo} from '../services/locale.js';
 import type { FastifyInstance } from 'fastify';
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
@@ -20,11 +23,15 @@ import { loadProviders, identitiesOf, type OAuthProviderConfig } from '../servic
 import { verifyOauthState, oauthState, csrfToken } from '../services/session.js';
 import { revokeAllTokensForUser } from '../services/token.js';
 import { getUuidByName, normalizeUuid } from '../services/uuid.js';
-import { verificationOf } from '../services/mojang.js';
+import { verificationOf,mojangConfiguration } from '../services/mojang.js';
 import { loginMethods } from '../services/login-methods.js';
 import { randomToken } from '../util.js';
 import { sendMail, mailConfigured } from '../services/mail.js';
-import { appearanceSettings, HOME_LAYOUTS, PALETTES, isHomeLayout, parseAppearance, saveAppearance, themeContext } from '../services/theme.js';
+import { appearanceSettings, HOME_LAYOUTS, PALETTES, RADIUS_PRESETS, isHomeLayout, parseAppearance, saveAppearance, themeContext } from '../services/theme.js';
+import { pageNumber, siteChart, siteSummary } from '../services/site-data.js';
+import { descriptionLimit, renderMarkdown } from '../services/content.js';
+import { pluginEnabled } from '../services/plugins.js';
+import {compileSearch,SearchError} from '../services/search.js';
 
 /**
  * Server-rendered pages: home, auth, user center, skinlib, admin.
@@ -33,14 +40,13 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
   const view = async (request: any) => {
     const user = request.currentUser;
     const darkMode = user?.is_dark_mode === 1;
-    const localeQuery = (request.query as any)?.lang;
-    const locale: 'zh_CN' | 'en' = localeQuery === 'en' || localeQuery === 'zh_CN'
-      ? localeQuery
-      : user?.locale === 'en' ? 'en' : 'zh_CN';
+    const locale = requestLocale(request);
     return {
       ...(await themeContext()),
       user: user ? { uid: user.uid, email: user.email, nickname: user.nickname, score: user.score, permission: user.permission, avatar: user.avatar, locale: user.locale, verified: !!user.verified, isDarkMode: darkMode } : null,
       hasPassword: !!user?.password,
+      hideAdvancedMenu: await pluginEnabled('hide-advanced-menu'),
+      hitokotoEnabled: await pluginEnabled('hitokoto'),
       isAdmin: isAdmin(user),
       siteName: await getOptionLocalized('site_name', locale),
       siteUrl: await getOption('site_url', ''),
@@ -53,13 +59,30 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       currentPath: request.url.split('?')[0],
       darkMode,
       locale,
+      localeReturnTo:localeReturnTo(request.url),
       htmlLang: locale === 'en' ? 'en' : 'zh-CN',
       customCss: await getOption('custom_css', ''),
       customJs: await getOption('custom_js', ''),
       faviconUrl: await getOption('favicon_url', '/favicon.ico'),
+      recaptchaSiteKey: await getOption('recaptcha_sitekey',''),
+      recaptchaInvisible:await getOptionBool('recaptcha_invisible',false),
       t: (key: string) => request.t(key),
     };
   };
+
+  app.post('/locale',async(request,reply)=>{
+    const body=request.body as Record<string,string>|undefined;
+    const wantsJson=request.headers.accept?.includes('application/json');
+    const reject=async(status:number,key:string)=>{
+      const message=request.t(key);
+      return wantsJson?reply.code(status).send({code:1,message}):reply.code(status).view('auth/notice',{...(await view(request)),message});
+    };
+    if(!request.checkCsrf(body?.csrf??request.headers['x-csrf-token'] as string))return reject(403,'locale.session-expired');
+    if(!isLocale(body?.locale))return reject(422,'locale.invalid');
+    await saveLocale(request,reply,body.locale);
+    const redirect=localeReturnTo(body.redirect);
+    return wantsJson?{code:0,locale:body.locale,redirect}:reply.redirect(redirect,303);
+  });
 
   // --- Home -----------------------------------------------------------------
   app.get('/', async (request, reply) => {
@@ -125,7 +148,11 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const user = request.currentUser;
     const canSign = !signedToday(user!.last_sign_at);
     const hasPassword = !!user!.password;
-    return reply.view('user/index', { ...base, players: playerData, canSign, hasPassword, scoreRuleMin: (await getOption('sign_score', '10,100')).split(',')[0], scoreRuleMax: (await getOption('sign_score', '10,100')).split(',')[1] ?? (await getOption('sign_score', '10,100')).split(',')[0] });
+    const [verification,verificationSettings,verificationReward]=await Promise.all([verificationOf(user!.uid),mojangConfiguration(),getOptionInt('mojang_verification_score_award',0)]);
+    return reply.view('user/index', { ...base, players: playerData, canSign, hasPassword,
+      launcherApiRoot:(config.publicOrigin||base.siteUrl||`${request.protocol}://${request.headers.host}`).replace(/\/+$/,'')+'/api/yggdrasil',
+      minecraftVerified:!!verification?.verified,minecraftVerificationConfigured:verificationSettings.configured,minecraftVerificationReward:Math.max(0,verificationReward),
+      scoreRuleMin: (await getOption('sign_score', '10,100')).split(',')[0], scoreRuleMax: (await getOption('sign_score', '10,100')).split(',')[1] ?? (await getOption('sign_score', '10,100')).split(',')[0] });
   });
 
   app.post('/user/sign', async (request, reply) => {
@@ -182,20 +209,13 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       const sent = await requestEmailChange(uid, email);
       return reply.view('auth/notice', { ...(await view(request)), message: sent ? '验证邮件已发送至新邮箱，确认后生效' : '邮箱格式无效或邮件服务不可用，请联系管理员' });
     } else if (action === 'locale') {
-      if (body.dark_mode === undefined) {
-        await exec('UPDATE users SET locale = ? WHERE uid = ?', [body.locale === 'en' ? 'en' : 'zh_CN', uid]);
-      } else {
-        await exec('UPDATE users SET locale = ?, is_dark_mode = ? WHERE uid = ?', [
-          body.locale === 'en' ? 'en' : 'zh_CN',
-          body.dark_mode === '1' ? 1 : 0,
-          uid,
-        ]);
-      }
+      await saveLocale(request,reply,body.locale==='en'?'en':'zh_CN');
+      if(body.dark_mode!==undefined)await exec('UPDATE users SET is_dark_mode=? WHERE uid=?',[body.dark_mode==='1'?1:0,uid]);
     } else if (action === 'avatar') {
       const avatarTid = parseInt(body.avatar ?? '0', 10) || 0;
       if (avatarTid > 0) {
         const texture = await findTextureByTid(avatarTid);
-        if (!texture || (texture.uploader !== uid && !texture.public)) {
+        if (!texture || !['steve','alex'].includes(texture.type) || (texture.uploader !== uid && !texture.public)) {
           return reply.view('user/profile', { ...(await view(request)), error: '头像材质无效', providers: await loadProviders() });
         }
       }
@@ -230,7 +250,10 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const base = await view(request);
     const players = await listPlayersOfUser(base.user!.uid);
     const closet = await closetOf(base.user!.uid);
-    return reply.view('user/closet', { ...base, closet, players });
+    const q = request.query as Record<string,string>, page = pageNumber(q.page);
+    const keyword = String(q.q ?? '').trim().slice(0,100), type = ['skin','cape','steve','alex'].includes(q.type) ? q.type : '';
+    const filtered = closet.filter(item => (!type || item.type === type || type === 'skin' && item.type !== 'cape') && (!keyword || item.item_name.toLowerCase().includes(keyword.toLowerCase())));
+    return reply.view('user/closet', { ...base, closet:filtered.slice((page - 1) * 20,page * 20), players,total:filtered.length,page,pages:Math.max(1,Math.ceil(filtered.length / 20)),keyword,type });
   });
 
   app.get('/user/connections', async (request, reply) => {
@@ -307,6 +330,8 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       closetItemCost: await getOptionInt('score_per_closet_item', 2),
       maxFileSize: await getOptionInt('max_upload_file_size', 1024),
       award: await getOptionInt('score_award_per_texture', 0),
+      descriptionMaxLength: await descriptionLimit(),
+      contentPolicyHtml: renderMarkdown(await getOption('content_policy','')),
     });
   });
 
@@ -328,6 +353,8 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       texture: { ...texture, public: texture.public === 1 },
       isOwner,
       description,
+      descriptionHtml: renderMarkdown(description),
+      descriptionMaxLength: await descriptionLimit(),
       inCloset: !!inCloset,
       applyPlayers: players.map((p) => ({ pid: p.pid, name: p.name, applied: (texture.type === 'cape' ? p.tid_cape : p.tid_skin) === texture.tid })),
       allowDownload: await getOptionBool('allow_downloading_texture', false),
@@ -338,50 +365,39 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
   app.get('/admin', async (request, reply) => {
     if (!requireAdmin(request, reply)) return;
     const base = await view(request);
-    const [{ countUsers }, { countPlayers }, { countTextures }] = await Promise.all([
-      import('../services/texture.js'),
-      import('../services/player.js'),
-      import('../services/texture.js'),
-    ]);
-    const stats = {
-      users: await countUsers(),
-      players: await countPlayers(),
-      textures: await countTextures(),
-    };
+    const [stats,chart] = await Promise.all([siteSummary(),siteChart()]);
     const lastLog = await (await import('../db.js')).query('SELECT * FROM ygg_log ORDER BY id DESC LIMIT 10');
-    return reply.view('admin/index', { ...base, stats, lastLog });
+    return reply.view('admin/index', { ...base, stats, chart, lastLog });
   });
 
   app.get('/admin/users', async (request, reply) => {
     if (!requireAdmin(request, reply)) return;
     const base = await view(request);
     const query = request.query as Record<string, string>;
-    const page = Math.max(1, parseInt(query.page ?? '1', 10) || 1);
-    const keyword = query.keyword?.trim() ?? '';
-    const where = keyword ? 'WHERE uid = ? OR email LIKE ? OR nickname LIKE ?' : '';
-    const params = keyword ? [parseInt(keyword, 10) || 0, `%${keyword}%`, `%${keyword}%`] : [];
+    const page = pageNumber(query.page),keyword=String(query.keyword??query.q??'').trim();
+    let search;try{search=compileSearch('users',keyword,{numericIds:true,timezone:config.tz,defaultOrder:'`uid` ASC'});}catch(error){if(!(error instanceof SearchError))throw error;return reply.code(422).view('admin/users',{...base,users:[],total:0,page,pages:1,keyword,searchError:error.message});}
+    const {where,params}=search;
     const total = (await queryOne<{ c: number }>(`SELECT COUNT(*) AS c FROM users ${where}`, params))?.c ?? 0;
     const users = await (await import('../db.js')).query(
-      `SELECT uid, email, nickname, score, permission, verified, register_at, last_sign_at FROM users ${where} ORDER BY uid ASC LIMIT 20 OFFSET ?`,
+      `SELECT uid, email, nickname, score, permission, verified, register_at, last_sign_at FROM users ${where} ORDER BY ${search.orderBy} LIMIT 20 OFFSET ?`,
       [...params, (page - 1) * 20]
     );
-    return reply.view('admin/users', { ...base, users, total, page, pages: Math.max(1, Math.ceil(total / 20)), keyword });
+    return reply.view('admin/users', { ...base, users, total, page, pages: Math.max(1, Math.ceil(total / 20)), keyword,searchError:null });
   });
 
   app.get('/admin/players', async (request, reply) => {
     if (!requireAdmin(request, reply)) return;
     const base = await view(request);
     const query = request.query as Record<string, string>;
-    const page = Math.max(1, parseInt(query.page ?? '1', 10) || 1);
-    const keyword = query.keyword?.trim() ?? '';
-    const where = keyword ? 'WHERE p.name LIKE ? OR p.uid = ?' : '';
-    const params = keyword ? [`%${keyword}%`, parseInt(keyword, 10) || 0] : [];
+    const page = pageNumber(query.page),keyword=String(query.keyword??query.q??'').trim();
+    let search;try{search=compileSearch('players',keyword,{alias:'p',numericIds:true,timezone:config.tz,defaultOrder:'p.pid ASC'});}catch(error){if(!(error instanceof SearchError))throw error;return reply.code(422).view('admin/players',{...base,players:[],total:0,page,pages:1,keyword,searchError:error.message});}
+    const {where,params}=search;
     const total = (await queryOne<{ c: number }>(`SELECT COUNT(*) AS c FROM players p ${where}`, params))?.c ?? 0;
     const players = await (await import('../db.js')).query(
-      `SELECT p.*, u.email FROM players p LEFT JOIN users u ON u.uid = p.uid ${where} ORDER BY p.pid ASC LIMIT 20 OFFSET ?`,
+      `SELECT p.*, u.email FROM players p LEFT JOIN users u ON u.uid = p.uid ${where} ORDER BY ${search.orderBy} LIMIT 20 OFFSET ?`,
       [...params, (page - 1) * 20]
     );
-    return reply.view('admin/players', { ...base, players, total, page, pages: Math.max(1, Math.ceil(total / 20)), keyword });
+    return reply.view('admin/players', { ...base, players, total, page, pages: Math.max(1, Math.ceil(total / 20)), keyword,searchError:null });
   });
 
   app.get('/admin/textures', async (request, reply) => {
@@ -405,10 +421,13 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
   app.get('/admin/reports', async (request, reply) => {
     if (!requireAdmin(request, reply)) return;
     const base = await view(request);
+    const query=request.query as Record<string,string>,keyword=String(query.keyword??query.q??'').trim(),page=pageNumber(query.page);
+    let search;try{search=compileSearch('reports',keyword,{alias:'r',numericIds:true,timezone:config.tz,defaultOrder:'r.status ASC, r.id DESC'});}catch(error){if(!(error instanceof SearchError))throw error;return reply.code(422).view('admin/reports',{...base,reports:[],total:0,page,pages:1,keyword,searchError:error.message});}
+    const total=(await queryOne<{c:number}>(`SELECT COUNT(*) AS c FROM reports r ${search.where}`,search.params))?.c??0;
     const reports = await (await import('../db.js')).query(
-      'SELECT r.*, t.name AS texture_name, t.hash FROM reports r LEFT JOIN textures t ON t.tid = r.tid ORDER BY r.status ASC, r.id DESC LIMIT 100'
+      `SELECT r.*, t.name AS texture_name, t.hash FROM reports r LEFT JOIN textures t ON t.tid = r.tid ${search.where} ORDER BY ${search.orderBy} LIMIT 20 OFFSET ?`,[...search.params,(page-1)*20]
     );
-    return reply.view('admin/reports', { ...base, reports });
+    return reply.view('admin/reports', { ...base, reports,total,page,pages:Math.max(1,Math.ceil(total/20)),keyword,searchError:null });
   });
 
   app.get('/admin/clients', async (request, reply) => {
@@ -449,10 +468,10 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const keys = [
       'site_name', 'site_url', 'site_description', 'announcement', 'copyright_text',
       'player_name_rule', 'player_name_length_min', 'player_name_length_max', 'custom_player_name_regexp',
-      'register_with_player_name', 'local_login_enabled', 'regs_per_ip', 'require_verification', 'user_initial_score',
+      'register_with_player_name', 'local_login_enabled', 'regs_per_ip', 'require_verification', 'user_initial_score','recaptcha_sitekey','recaptcha_invisible',
       'score_per_player', 'score_per_storage', 'private_score_per_storage', 'score_per_closet_item',
-      'score_award_per_texture', 'take_back_scores_after_deletion', 'status_code_for_private',
-      'allow_downloading_texture', 'max_upload_file_size', 'sign_score', 'sign_gap_time',
+      'score_award_per_texture', 'take_back_scores_after_deletion', 'status_code_for_private', 'return_score', 'score_award_per_like', 'reporter_score_modification', 'reporter_reward_score', 'sign_after_zero', 'content_policy',
+      'allow_downloading_texture', 'max_upload_file_size', 'sign_score', 'sign_gap_time', 'textures_description_limit',
       'ygg_uuid_algorithm', 'ygg_token_expire_1', 'ygg_token_expire_2', 'ygg_tokens_limit',
       'ygg_search_profile_max', 'ygg_skin_domain', 'ygg_disable_authserver',
       'ygg_connect_server_url', 'ygg_shared_client_id', 'yggc_device_code_expire',
@@ -466,7 +485,9 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       providers: await loadProviders(),
       homeLayouts: HOME_LAYOUTS,
       palettes: PALETTES,
+      radiusPresets: RADIUS_PRESETS,
       homePicture: await getOption('home_pic_url', ''),
+      recaptchaConfigured:!!await getOption('recaptcha_secretkey',''),
       fixedBackground: await getOptionBool('fixed_bg', false),
       hideIntroduction: await getOptionBool('hide_intro', false),
       transparentNavigation: await getOptionBool('transparent_navbar', false),
@@ -507,6 +528,8 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       return reply.redirect('/admin/settings?saved=1#oauth');
     }
     const allowed = new Set(['site_name','site_url','site_description','announcement','copyright_text','player_name_rule','player_name_length_min','player_name_length_max','custom_player_name_regexp','register_with_player_name','local_login_enabled','regs_per_ip','require_verification','user_initial_score','score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','reporter_score_modification','reporter_reward_score','return_score','take_back_scores_after_deletion','status_code_for_private','allow_downloading_texture','max_upload_file_size','sign_score','sign_gap_time','sign_after_zero','ygg_uuid_algorithm','ygg_token_expire_1','ygg_token_expire_2','ygg_tokens_limit','ygg_search_profile_max','ygg_skin_domain','ygg_disable_authserver','ygg_shared_client_id','yggc_device_code_expire','content_policy']);
+    allowed.add('textures_description_limit');
+    if (body.textures_description_limit !== undefined && (!/^\d+$/.test(body.textures_description_limit) || Number(body.textures_description_limit) > 65535)) return reply.redirect('/admin/settings?error=description-limit');
     const localLoginNext = body.local_login_enabled === undefined
       ? await getOptionBool('local_login_enabled', true)
       : !['false', '0', ''].includes(String(body.local_login_enabled));
@@ -514,6 +537,13 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       return reply.redirect('/admin/settings?error=local-login-required#oauth');
     }
     const editable = Object.keys(body).filter((k) => allowed.has(k));
+    if(body.recaptcha_sitekey!==undefined){
+      const sitekey=String(body.recaptcha_sitekey).trim(),secret=sitekey?(String(body.recaptcha_secretkey??'').trim()||await getOption('recaptcha_secretkey','')):'';
+      if(sitekey&&(!secret||![sitekey,secret].every(value=>/^[A-Za-z0-9_-]{1,512}$/.test(value))))return reply.redirect('/admin/settings?error=recaptcha-invalid#register');
+      await setOption('recaptcha_sitekey',sitekey);await setOption('recaptcha_secretkey',secret);
+      const invisible=body.recaptcha_invisible===undefined?await getOptionBool('recaptcha_invisible',false):['true','1'].includes(String(body.recaptcha_invisible));
+      await setOption('recaptcha_invisible',sitekey&&invisible?'true':'false');
+    }
     for (const key of editable) {
       await setOption(key, key === 'local_login_enabled' ? (localLoginNext ? 'true' : 'false') : String(body[key] ?? ''));
     }

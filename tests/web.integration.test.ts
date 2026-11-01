@@ -5,11 +5,12 @@ import fs from 'node:fs/promises';
 import { PNG } from 'pngjs';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
-import { exec, queryOne, pool } from '../src/db.js';
+import { exec, queryOne, pool,insert,nowString } from '../src/db.js';
+import {listPlayersOfUser,setPlayerTexture,clearPlayerTexture} from '../src/services/player.js';
 import { registerUser } from '../src/services/user.js';
 import { setSessionCookie } from '../src/services/session.js';
 import { closetAdd, deleteTexture, uploadTexture, texturePath, type Texture } from '../src/services/texture.js';
-import { getOptionInt } from '../src/services/option.js';
+import { getOptionInt,getOption,setOption } from '../src/services/option.js';
 import sharp from 'sharp';
 import { getUuidByName, maskUuid } from '../src/services/uuid.js';
 
@@ -41,6 +42,101 @@ test('texture pages: upload pricing, closet prerequisite, applied state and erro
   try {
     const owner = await user('Owner'), viewer = await user('Viewer');
     const publicTexture = await texture(owner.uid, true), privateTexture = await texture(owner.uid, false);
+    await t.test('language choice persists for accounts and guests across pages and old URLs',async()=>{
+      const account=await user('Locale');
+      const first=await app.inject({url:'/user/closet?keyword=Green&sort=time',headers:{cookie:account.cookie}});
+      const csrf=/<meta name="csrf-token" content="([^"]+)"/.exec(first.body)![1];
+      const choose=(locale:string,extra:Record<string,string>={})=>app.inject({method:'POST',url:'/locale',headers:{cookie:account.cookie,accept:'application/json'},payload:{csrf,locale,redirect:'/user/closet?keyword=Green&sort=time&lang=zh_CN#library',...extra}});
+      const saved=await choose('en');assert.equal(saved.statusCode,200);assert.deepEqual(saved.json(),{code:0,locale:'en',redirect:'/user/closet?keyword=Green&sort=time#library'});
+      assert.equal((await queryOne<any>('SELECT locale FROM users WHERE uid=?',[account.uid]))!.locale,'en');
+      assert.match(String(saved.headers['set-cookie']),/mcnskin_locale=en;.*Max-Age=31536000/);
+      for(const url of ['/user','/user/player','/user/profile','/user/verification','/user/closet?lang=zh_CN','/']){
+        const page=await app.inject({url,headers:{cookie:account.cookie}});assert.equal(page.statusCode,200,url);assert.match(page.body,/<html lang="en"/,url);
+        assert.match(page.body,/<button[^>]*value="en"[^>]*aria-checked="true"/,url);
+      }
+      assert.equal((await choose('en',{csrf:'invalid'})).statusCode,403);
+      assert.equal((await choose('invalid')).statusCode,422);
+      assert.equal((await choose('en',{redirect:'//example.com/'})).json().redirect,'/');
+      const back=await app.inject({method:'POST',url:'/locale',headers:{cookie:account.cookie},payload:{csrf,locale:'zh_CN',redirect:'/user/profile?lang=en'}});
+      assert.equal(back.statusCode,303);assert.equal(back.headers.location,'/user/profile');
+      const profile=await app.inject({method:'POST',url:'/user/profile',headers:{cookie:account.cookie},payload:{csrf,action:'locale',locale:'en'}});
+      assert.equal(profile.statusCode,302);assert.match(String(profile.headers['set-cookie']),/mcnskin_locale=en/);
+      const landing=await app.inject('/');
+      const guestCookies=landing.cookies.map(cookie=>cookie.name+'='+cookie.value).join('; ');
+      const guestCsrf=/<meta name="csrf-token" content="([^"]+)"/.exec(landing.body)![1];
+      const guestSaved=await app.inject({method:'POST',url:'/locale',headers:{cookie:guestCookies,accept:'application/json'},payload:{csrf:guestCsrf,locale:'en',redirect:'/'}});
+      assert.equal(guestSaved.statusCode,200);
+      const languageCookie=guestSaved.cookies.find(cookie=>cookie.name==='mcnskin_locale');assert.ok(languageCookie);
+      const guestHeaders={cookie:guestCookies+'; '+languageCookie.name+'='+languageCookie.value};
+      for(const url of ['/','/skinlib','/auth/login','/?lang=zh_CN'])assert.match((await app.inject({url,headers:guestHeaders})).body,/<html lang="en"/,url);
+      // A stored account choice takes precedence over another browser's guest preference.
+      assert.match((await app.inject({url:'/user',headers:{cookie:account.cookie+'; mcnskin_locale=zh_CN'}})).body,/<html lang="en"/);
+    });
+    await t.test('dashboard provides launcher setup and an accurate Minecraft verification guide',async()=>{
+      const account=await user('Guide'),oldKey=process.env.MICROSOFT_KEY,oldSecret=process.env.MICROSOFT_SECRET;
+      const reward=await getOption('mojang_verification_score_award','0'),uuid=crypto.randomBytes(16).toString('hex');
+      const dashboard=()=>app.inject({url:'/user',headers:{cookie:account.cookie}});
+      try{
+        process.env.MICROSOFT_KEY='dashboard-fixture-client';process.env.MICROSOFT_SECRET='dashboard-fixture-secret';
+        await setOption('mojang_verification_score_award','137');
+        const unverified=await dashboard();assert.equal(unverified.statusCode,200);
+        assert.match(unverified.body,/draggable="true"[^>]*data-launcher-drag="https?:\/\/[^\"]+\/api\/yggdrasil"/);
+        assert.match(unverified.body,/将此按钮拖入启动器/);assert.match(unverified.body,/data-verification-status="unverified"/);
+        assert.match(unverified.body,/首次完成验证可获得 137 积分/);assert.match(unverified.body,/href="\/user\/verification"/);
+        await exec('INSERT INTO mojang_verifications (user_id,uuid,verified,created_at,updated_at) VALUES (?,?,1,?,?)',[account.uid,uuid,nowString(),nowString()]);
+        const verified=await dashboard();assert.equal(verified.statusCode,200);assert.match(verified.body,/data-verification-status="verified"/);
+        assert.match(verified.body,/查看验证信息/);assert.ok(!verified.body.includes('data-verification-reward'));assert.ok(!verified.body.includes(uuid));
+        await exec('DELETE FROM mojang_verifications WHERE user_id=?',[account.uid]);process.env.MICROSOFT_KEY='';
+        const unavailable=await dashboard();assert.match(unavailable.body,/data-verification-status="unavailable"/);
+        assert.match(unavailable.body,/查看验证说明/);assert.ok(!unavailable.body.includes('data-verification-reward'));
+      }finally{
+        await exec('DELETE FROM mojang_verifications WHERE user_id=?',[account.uid]);await setOption('mojang_verification_score_award',reward);
+        if(oldKey===undefined)delete process.env.MICROSOFT_KEY;else process.env.MICROSOFT_KEY=oldKey;
+        if(oldSecret===undefined)delete process.env.MICROSOFT_SECRET;else process.env.MICROSOFT_SECRET=oldSecret;
+      }
+    });
+    await t.test('account avatar follows equipped skins, revalidates changes and respects manual choice',async()=>{
+      const account=await user('Avatar'),[first]=await listPlayersOfUser(account.uid);
+      const skinA=await texture(account.uid,true),skinB=await texture(account.uid,false);
+      const url='/avatar/user/'+account.uid+'?png&size=64';
+      const baseline=await app.inject(url);
+      const expectedA=await app.inject('/avatar/'+skinA.tid+'?png&size=64');
+      const expectedB=await app.inject('/avatar/'+skinB.tid+'?png&size=64');
+      await setPlayerTexture(first,'skin',skinA.tid);
+      const initial=await app.inject(url);
+      assert.equal(initial.statusCode,200);assert.deepEqual(initial.rawPayload,expectedA.rawPayload);
+      assert.equal(initial.headers['cache-control'],'public, max-age=0, must-revalidate');
+      assert.equal((await app.inject({url,headers:{'if-none-match':String(initial.headers.etag)}})).statusCode,304);
+      await setPlayerTexture(first,'skin',skinB.tid);
+      const changed=await app.inject({url,headers:{'if-none-match':String(initial.headers.etag)}});
+      assert.equal(changed.statusCode,200);assert.notEqual(changed.headers.etag,initial.headers.etag);
+      assert.deepEqual(changed.rawPayload,expectedB.rawPayload);
+      const profile=await app.inject({url:'/user/profile',headers:{cookie:account.cookie}});
+      assert.match(profile.body,/v=5&amp;size=64|v=5&size=64/);
+      assert.match(profile.body,/0 表示自动跟随角色皮肤/);
+      const csrf=/<meta name="csrf-token" content="([^"]+)"/.exec(profile.body)![1];
+      const setAvatar=(avatar:number)=>app.inject({method:'POST',url:'/user/profile',headers:{cookie:account.cookie},payload:{csrf,action:'avatar',avatar:String(avatar)}});
+      assert.equal((await setAvatar(skinA.tid)).statusCode,302);
+      assert.deepEqual((await app.inject(url)).rawPayload,expectedA.rawPayload);
+      assert.equal((await setAvatar(0)).statusCode,302);
+      assert.deepEqual((await app.inject(url)).rawPayload,expectedB.rawPayload);
+      // Simulate a migrated account with several existing roles, independently of site role limits.
+      const extra=await insert('INSERT INTO players (uid,name,tid_skin,tid_cape,last_modified) VALUES (?,?,?,0,?)',[account.uid,'Extra'+suffix,skinA.tid,nowString()]);
+      assert.deepEqual((await app.inject(url)).rawPayload,expectedB.rawPayload);
+      await clearPlayerTexture(first,'skin');
+      assert.deepEqual((await app.inject(url)).rawPayload,expectedA.rawPayload);
+      await exec('UPDATE players SET tid_skin=? WHERE pid=?',[2147483647,first.pid]);
+      assert.deepEqual((await app.inject(url)).rawPayload,expectedA.rawPayload);
+      await setPlayerTexture(first,'skin',skinB.tid);
+      const file=texturePath(skinB.hash);await fs.rename(file,file+'.avatar-test');
+      try{assert.deepEqual((await app.inject(url)).rawPayload,expectedA.rawPayload);}finally{await fs.rename(file+'.avatar-test',file);}
+      await exec('UPDATE players SET tid_skin=0 WHERE uid=?',[account.uid]);
+      const fallback=await app.inject(url);assert.equal(fallback.statusCode,baseline.statusCode);
+      if(baseline.statusCode===302)assert.equal(fallback.headers.location,baseline.headers.location);
+      else assert.deepEqual(fallback.rawPayload,baseline.rawPayload);
+      await exec('DELETE FROM players WHERE pid=?',[extra]);
+      assert.equal((await app.inject('/avatar/user/invalid?png')).statusCode,200);
+    });
     const detail = () => app.inject({ url: '/skinlib/show/' + publicTexture.tid, headers: { cookie: viewer.cookie } });
     const applyButton = (html: string) => {
       const button = /<button[^>]*data-action="apply-texture"[^>]*>[\s\S]*?<\/button>/.exec(html)?.[0];

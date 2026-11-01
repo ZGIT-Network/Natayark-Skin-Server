@@ -17,21 +17,33 @@ const verificationKeys: crypto.KeyObject[] = [];
 export async function ensureSigningKey(): Promise<void> {
   if (privateKey) return;
   signingInitialization ??= (async () => {
-    let pem = await getOption('ygg_oidc_private_key');
-    if (!pem) {
-      try { pem = await fs.readFile(path.join(config.storageDir, 'oauth-private.key'), 'utf8'); } catch {}
-    }
-    const key = pem ? crypto.createPrivateKey(pem) : crypto.generateKeyPairSync('rsa', { modulusLength: 3072 }).privateKey;
-    const pub = crypto.createPublicKey(key);
-    if (key.asymmetricKeyType !== 'rsa') throw new Error('OIDC signing key must be RSA');
-    keyId = (await getOption('ygg_oidc_key_id')) || crypto.createHash('sha256').update(pub.export({ type: 'spki', format: 'der' })).digest('hex').slice(0, 24);
-    await setOption('ygg_oidc_key_id', keyId);
-    await setOption('ygg_oidc_private_key', key.export({ type: 'pkcs8', format: 'pem' }).toString());
-    await setOption('ygg_oidc_public_key', pub.export({ type: 'spki', format: 'pem' }).toString());
+    const initialized=await withTransaction(async()=>{
+      const lock='natayark:keys:'+crypto.createHash('sha256').update(config.db.database+':'+config.db.tablePrefix).digest('hex').slice(0,40);
+      const acquired=await queryOne<{acquired:number}>('SELECT GET_LOCK(?,10) AS acquired',[lock]);
+      if(acquired?.acquired!==1)throw new Error('Could not acquire signing key initialization lock');
+      try{
+        // Same lock order as setOption; read directly to avoid a stale process-local option cache.
+        await exec('SELECT uid FROM users ORDER BY uid LIMIT 1 FOR UPDATE');
+        const stored=async(name:string)=>(await queryOne<{option_value:string}>('SELECT option_value FROM options WHERE option_name=? LIMIT 1 FOR UPDATE',[name]))?.option_value||'';
+        let pem=await stored('ygg_oidc_private_key');
+        if(!pem){try{pem=await fs.readFile(path.join(config.storageDir,'oauth-private.key'),'utf8');}catch{}}
+        const key=pem?crypto.createPrivateKey(pem):crypto.generateKeyPairSync('rsa',{modulusLength:3072}).privateKey;
+        if(key.asymmetricKeyType!=='rsa')throw new Error('OIDC signing key must be RSA');
+        const pub=crypto.createPublicKey(key),privatePem=key.export({type:'pkcs8',format:'pem'}).toString();
+        const id=await stored('ygg_oidc_key_id')||crypto.createHash('sha256').update(pub.export({type:'spki',format:'der'})).digest('hex').slice(0,24);
+        const texturePem=await stored('ygg_private_key')||privatePem;
+        // Preserve an existing site's texture key; fresh installations receive a usable key.
+        crypto.createPrivateKey(texturePem);
+        await setOption('ygg_oidc_key_id',id);await setOption('ygg_oidc_private_key',privatePem);
+        await setOption('ygg_oidc_public_key',pub.export({type:'spki',format:'pem'}).toString());
+        await setOption('ygg_private_key',texturePem);
+        return{key,pub,id,texturePem};
+      }finally{await queryOne('SELECT RELEASE_LOCK(?) AS released',[lock]);}
+    });
+    const {key,pub,id,texturePem}=initialized;keyId=id;
     verificationKeys.push(pub);
     try { verificationKeys.push(crypto.createPublicKey(await fs.readFile(path.join(config.storageDir, 'oauth-public.key'), 'utf8'))); } catch {}
-    const textureKey = await getOption('ygg_private_key');
-    if (textureKey) { try { verificationKeys.push(crypto.createPublicKey(textureKey)); } catch {} }
+    verificationKeys.push(crypto.createPublicKey(texturePem));
     privateKey = key;
     publicKey = pub;
   })();

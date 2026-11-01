@@ -1,13 +1,14 @@
       </div>
     </div>
-    <p class="mt-6 text-center text-xs text-muted-foreground"><%- include('copyright') %></p>
+    <footer class="compact-footer mt-6 text-center text-xs text-muted-foreground"><div><%- include('copyright') %></div><%- include('powered-by') %></footer>
   </div>
 <script>
   window.__CSRF = <%- JSON.stringify(typeof csrf !== 'undefined' ? csrf : '') %>;
   window.__USER_ID = <%- JSON.stringify(typeof user !== 'undefined' && user ? user.uid : 0) %>;
 </script>
-<script src="/js/ui.js"></script>
-<script src="/js/app.js"></script>
+<script src="/js/ui.js?v=8"></script>
+<script src="/js/app.js?v=8"></script>
+<script src="/js/navigation.js?v=8"></script>
 <% if (typeof customJs !== 'undefined' && customJs) { %>
 <script><%- customJs %></script>
 <% } %>

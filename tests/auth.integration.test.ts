@@ -7,17 +7,22 @@ import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { exec, query, queryOne, pool, nowString } from '../src/db.js';
 import { getOption, setOption } from '../src/services/option.js';
-import { tokenHash } from '../src/services/session.js';
-import { checkUserPassword } from '../src/services/user.js';
+import { tokenHash,parseSession } from '../src/services/session.js';
+import { createCaptcha,loginFailures } from '../src/services/captcha.js';
+import { checkUserPassword, registerUser } from '../src/services/user.js';
 
 test('isolated authentication: registration, OAuth, mailbox proof, reset and revocation', { timeout: 60_000, skip: !config.db.tablePrefix.startsWith('dev_') }, async (t) => {
   assert.ok(config.db.tablePrefix.startsWith('dev_'), 'Tests require an isolated dev_ namespace');
   const originalProviders = await getOption('oauth_providers', '');
   const originalLocalLogin = await getOption('local_login_enabled', 'true');
   const originalAuthserver = await getOption('ygg_disable_authserver', 'false');
+  const originalPlugins = await getOption('plugins_enabled','[]');
+  const originalRecaptcha=await getOption('recaptcha_secretkey','');await setOption('recaptcha_secretkey','');
   await setOption('local_login_enabled','true');
   await setOption('ygg_disable_authserver','false');
   const originalMail = { ...config.mail };
+  // Never deliver integration fixtures through a configured production SMTP server.
+  config.mail.host='';config.mail.fromAddress='';
   const suffix = Date.now().toString(36);
   const userEmails: string[] = [];
   const capturedMail: string[] = [];
@@ -62,11 +67,16 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
   await setOption('oauth_providers', JSON.stringify([provider]));
   const app = await createApp();
   let browserNumber = 0;
+  const browserHashes=new Set<string>();
   function browser() {
     const cookies = new Map<string, string>(), address = '192.0.2.' + (++browserNumber);
     return {
+      sid:()=>parseSession(cookies.get('mcnskin_session'))!.sid,ip:address,
       cookies,
       async request(url: string, payload?: Record<string, string>) {
+        const session=parseSession(cookies.get('mcnskin_session'));if(session)browserHashes.add(tokenHash(session.sid));
+        browserHashes.add(tokenHash(address));
+        if(payload&&['/auth/register','/auth/forgot'].includes(url)&&payload.captcha===undefined&&session){await createCaptcha(session.sid,'ABCDE');payload={...payload,captcha:'ABCDE'};}
         const response = await app.inject({ url, method: payload ? 'POST' : 'GET', remoteAddress: address,
           headers: { cookie: [...cookies].map(([k, v]) => k + '=' + v).join('; '), ...(payload ? { 'content-type': 'application/x-www-form-urlencoded' } : {}) },
           payload: payload ? new URLSearchParams(payload).toString() : undefined });
@@ -126,6 +136,35 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       assert.equal((await local.request('/auth/oauth/set-password', { csrf: localCsrf, password: 'new-password-123' })).statusCode, 400);
       assert.equal((await queryOne<any>('SELECT password FROM users WHERE uid = ?', [uid]))!.password, before);
     });
+    await t.test('original identification parameter accepts player-name login',async()=>{
+      const client=browser(),csrf=await client.csrf();
+      const response=await client.request('/auth/login',{csrf,identification:playerName,password:'Auth-password-123'});
+      assert.equal(response.statusCode,302);assert.equal((await client.request('/api/user')).json().uid,uid);
+    });
+    await t.test('CAPTCHA protects repeated login failures and registration, is browser-bound and single-use',async()=>{
+      const client=browser(),csrf=await client.csrf(),image=await client.request('/auth/captcha');
+      assert.match(String(image.headers['content-type']),/^image\/jpeg/);assert.match(String(image.headers['cache-control']),/no-store/);assert.equal(image.rawPayload.subarray(0,2).toString('hex'),'ffd8');
+      for(let i=0;i<4;i++)assert.equal((await client.request('/auth/login',{csrf,email,password:'wrong'})).statusCode,401);
+      assert.match((await client.request('/auth/login')).body,/data-refresh-captcha/);assert.equal(await loginFailures(client.ip),4);
+      assert.equal((await client.request('/auth/login',{csrf,email,password:'Auth-password-123'})).statusCode,422);
+      await createCaptcha(client.sid(),'ABCDE');
+      assert.equal((await client.request('/auth/login',{csrf,email,password:'Auth-password-123',captcha:'ZZZZZ'})).statusCode,422);
+      assert.equal((await client.request('/auth/login',{csrf,email,password:'Auth-password-123',captcha:'ABCDE'})).statusCode,422,'Wrong answers consume the challenge');
+      await createCaptcha(client.sid(),'ABCDE');
+      const other=browser(),otherCsrf=await other.csrf('/auth/register');
+      assert.equal((await other.request('/auth/register',{csrf:otherCsrf,email:'captcha-'+suffix+'@example.test',password:'Auth-password-123',password_confirm:'Auth-password-123',player_name:'Cap'+suffix,captcha:'ABCDE'})).statusCode,422);
+      assert.equal(await queryOne('SELECT uid FROM users WHERE email=?',['captcha-'+suffix+'@example.test']),null);
+      const login=await client.request('/auth/login',{_token:csrf,email,password:'Auth-password-123',captcha:'abcde'});
+      assert.equal(login.statusCode,302);assert.equal((await client.request('/api/user')).json().uid,uid);assert.equal(await loginFailures(client.ip),0);
+    });
+    await t.test('keep login uses a persistent cookie only when requested',async()=>{
+      for(const keep of ['', 'true']){
+        const client=browser(),csrf=await client.csrf(),response=await client.request('/auth/login',{csrf,email,password:'Auth-password-123',keep});
+        assert.equal(response.statusCode,302);const cookie=[response.headers['set-cookie']].flat().map(String).find(value=>value.startsWith('mcnskin_session=')&&!value.startsWith('mcnskin_session=;'))!;
+        if(keep)assert.match(cookie,/Max-Age=604800/);else assert.doesNotMatch(cookie,/Max-Age|Expires/);
+        assert.match(cookie,/HttpOnly/);assert.match(cookie,/SameSite=Lax/);
+      }
+    });
     await t.test('disabled SMTP never discloses a reset link or creates a reset token', async () => {
       config.mail.host = ''; config.mail.fromAddress = '';
       const anonymous = browser(), csrf = await anonymous.csrf('/auth/forgot');
@@ -138,9 +177,16 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       remote = { id: 'existing-email-' + suffix, username: playerName, email, email_verified: true };
       const anonymous = browser(), flow = await begin(anonymous);
       const response = await anonymous.request('/auth/login/auth-test/callback?code=code&state=' + flow.state);
-      assert.equal(response.statusCode, 409, response.body);
+      assert.equal(response.statusCode, 302, response.body);
+      assert.match(String(response.headers.location),/\/auth\/oauth\/migrate\?flow=/);
       assert.equal(crypto.createHash('sha256').update(lastVerifier).digest('base64url'), flow.challenge);
       assert.equal((await anonymous.request('/user')).statusCode, 302);
+      const path=String(response.headers.location),token=new URL(path,'http://local').searchParams.get('flow')!;
+      const csrf=await anonymous.csrf(path);
+      const wrong=await anonymous.request('/auth/oauth/migrate',{csrf,flow:token,method:'password',password:'incorrect'});
+      assert.match(wrong.body,/原账户密码不正确/);
+      assert.equal((await anonymous.request('/user')).statusCode,302);
+      assert.equal(await queryOne('SELECT user_id FROM mcn_oauth_identities WHERE provider=? AND subject=?',[provider.key,remote.id]),null);
     });
     await t.test('state binds the initiating browser and callback is single-use; verified provider can register', async () => {
       const oauthEmail = 'auth-oauth-' + suffix + '@example.test'; userEmails.push(oauthEmail);
@@ -197,6 +243,51 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       assert.equal((await queryOne<any>('SELECT verified FROM users WHERE email = ?', [oauthEmail]))?.verified, 1);
       assert.ok(checkUserPassword((await queryOne<any>('SELECT * FROM users WHERE email=?',[oauthEmail]))!,'Mailbox-password-123'));
       assert.equal((await anonymous.request('/auth/verify-email?token=' + mailToken)).statusCode, 400);
+    });
+    await t.test('passwordless legacy OAuth account migrates by mailbox proof with registration and password login disabled',async()=>{
+      const email='auth-legacy-'+suffix+'@example.test';userEmails.push(email);
+      const created=await registerUser({email,nickname:'Legacy',player_name:'Old'+suffix,verified:true});assert.ok(created.ok);
+      const original=await queryOne<any>('SELECT * FROM users WHERE uid=?',[created.user.uid]);assert.equal(original.password,'');
+      const players=await query('SELECT * FROM players WHERE uid=?',[created.user.uid]);
+      const uuids=await query('SELECT * FROM `uuid` WHERE name=?',['Old'+suffix]);
+      await setOption('plugins_enabled',JSON.stringify([{name:'disable-registration',version:'fixture'}]));await setOption('local_login_enabled','false');
+      try{
+        remote={id:'legacy-subject-'+suffix,username:'Legacy remote',email,email_verified:false};
+        const client=browser(),authorization=await begin(client);
+        const callback=await client.request('/auth/login/auth-test/callback?code=old&state='+authorization.state);
+        assert.match(String(callback.headers.location),/oauth\/migrate/);
+        const path=String(callback.headers.location),flow=new URL(path,'http://local').searchParams.get('flow')!,csrf=await client.csrf(path);
+        assert.equal((await browser().request(path)).statusCode,400,'Legacy pending link binds its initiating browser');
+        assert.equal((await client.request('/auth/oauth/migrate',{flow,method:'email'})).statusCode,403);
+        const mailCount=capturedMail.length;
+        const sent=await client.request('/auth/oauth/migrate',{csrf,flow,method:'email',email:'attacker@example.test'});
+        assert.match(sent.body,/验证邮件已发送/);assert.equal(capturedMail.length,mailCount+1);assert.match(capturedMail.at(-1)!,new RegExp(email));
+        assert.equal((await client.request('/user')).statusCode,302,'OAuth asserted email does not log in before independent proof');
+        const token=lastMailToken();
+        assert.equal((await browser().request('/auth/verify-email?token='+token)).statusCode,403);
+        const linked=await client.request('/auth/verify-email?token='+token);assert.equal(linked.statusCode,302);assert.equal(linked.headers.location,'/user');
+        assert.equal((await client.request('/api/user')).json().uid,created.user.uid);
+        assert.deepEqual(await queryOne('SELECT * FROM users WHERE uid=?',[created.user.uid]),original);
+        assert.deepEqual(await query('SELECT * FROM players WHERE uid=?',[created.user.uid]),players);
+        assert.deepEqual(await query('SELECT * FROM `uuid` WHERE name=?',['Old'+suffix]),uuids);
+        assert.equal((await client.request('/auth/verify-email?token='+token)).statusCode,400);
+        remote={...remote,email:'changed-provider-email@example.test'};
+        const again=browser(),next=await begin(again);
+        assert.equal((await again.request('/auth/login/auth-test/callback?code=again&state='+next.state)).headers.location,'/user');
+        assert.equal((await again.request('/api/user')).json().uid,created.user.uid,'Subsequent login uses stable subject and ignores changed email');
+      }finally{await setOption('plugins_enabled',originalPlugins);await setOption('local_login_enabled','true');}
+    });
+    await t.test('legacy migration accepts the correct original password without changing the account',async()=>{
+      const email='auth-legacy-password-'+suffix+'@example.test';userEmails.push(email);
+      const created=await registerUser({email,player_name:'Pwd'+suffix,password:'legacy-correct-password',verified:true});assert.ok(created.ok);
+      remote={id:'legacy-password-'+suffix,email,username:'Old password',email_verified:false};
+      const client=browser(),authorization=await begin(client),callback=await client.request('/auth/login/auth-test/callback?code=password&state='+authorization.state);
+      const path=String(callback.headers.location),flow=new URL(path,'http://local').searchParams.get('flow')!,csrf=await client.csrf(path);
+      const before=await queryOne('SELECT * FROM users WHERE uid=?',[created.user.uid]);
+      const linked=await client.request('/auth/oauth/migrate',{csrf,flow,method:'password',password:'legacy-correct-password'});
+      assert.equal(linked.headers.location,'/user');assert.equal((await client.request('/api/user')).json().uid,created.user.uid);
+      assert.deepEqual(await queryOne('SELECT * FROM users WHERE uid=?',[created.user.uid]),before);
+      assert.equal((await client.request('/auth/oauth/migrate',{csrf,flow,method:'password',password:'legacy-correct-password'})).statusCode,403);
     });
     await t.test('an authenticated user explicitly links and unlinks a stable external subject', async () => {
       remote = { id: 'linked-' + suffix, username: 'Linked', email: 'different-' + suffix + '@example.test', email_verified: false };
@@ -256,6 +347,8 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
     Object.assign(config.mail, originalMail);
     await setOption('local_login_enabled',originalLocalLogin);
     await setOption('ygg_disable_authserver',originalAuthserver);
+    await setOption('plugins_enabled',originalPlugins);
+    await setOption('recaptcha_secretkey',originalRecaptcha);
     await setOption('oauth_providers', originalProviders);
     for (const email of userEmails) {
       const user = await queryOne<any>('SELECT uid FROM users WHERE email = ?', [email]);
@@ -270,6 +363,7 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       await exec('DELETE FROM users WHERE uid = ?', [user.uid]);
     }
     await exec('DELETE FROM mcn_oauth_flows WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, ?)) = ?', ['$.provider', 'auth-test']);
+    for(const hash of browserHashes)await exec('DELETE FROM mcn_oauth_flows WHERE browser_hash=?',[hash]);
     await app.close();
     await Promise.all([new Promise<void>(resolve => oauth.close(() => resolve())), new Promise<void>(resolve => smtp.close(() => resolve()))]);
     await pool.end();

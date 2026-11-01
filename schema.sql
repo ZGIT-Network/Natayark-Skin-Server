@@ -213,7 +213,7 @@ CREATE TABLE `textures` (
 CREATE TABLE `textures_description` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `tid` bigint(20) unsigned NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `textures_description_tid_unique` (`tid`)
 ) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

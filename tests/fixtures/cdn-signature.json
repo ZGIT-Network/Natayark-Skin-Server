@@ -1,0 +1,15 @@
+{
+    "params": {
+        "AccessKeyId": "fixture-key",
+        "Action": "RefreshObjectCaches",
+        "ObjectPath": "https://example.test/路径?a=hello world&b=*+~\nhttps://example.test/two",
+        "SignatureNonce": "fixed-fixture",
+        "Timestamp": "2026-11-01T00:00:00Z",
+        "Version": "2018-05-10"
+    },
+    "secret": "fixture-secret",
+    "signatures": {
+        "GET": "/2KkgV8kOlDAiXIJSKrPhQYBHZs=",
+        "POST": "K9eoQzP6+LFOU/8JkIdJ87TBUvo="
+    }
+}

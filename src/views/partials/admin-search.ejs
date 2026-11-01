@@ -1,0 +1,19 @@
+<div class="w-full sm:max-w-xl">
+  <form method="get" action="<%= searchPath %>" class="flex gap-2" role="search">
+    <label class="relative flex-1 min-w-0"><span class="sr-only"><%= t('search.label') %></span>
+      <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><%- icon('search') %></span>
+      <input type="search" name="keyword" class="input pl-8" maxlength="4096" placeholder="<%= searchPlaceholder %>" value="<%= keyword %>">
+    </label>
+    <button type="submit" class="btn btn-outline btn-icon shrink-0" aria-label="<%= t('search.submit') %>"><%- icon('search') %></button>
+  </form>
+  <details class="mt-2 text-xs text-muted-foreground" data-search-help>
+    <summary class="cursor-pointer w-fit"><%= t('search.advanced') %></summary>
+    <div class="mt-2 grid gap-2 leading-relaxed break-words">
+      <p><%= t('search.help') %></p>
+      <p><%= t('search.example') %> <code class="text-foreground break-all"><%= searchExample %></code></p>
+      <p><%= t('search.date-help') %></p>
+      <% if (keyword) { %><a class="text-brand-strong underline w-fit" href="<%= searchPath %>"><%= t('search.clear') %></a><% } %>
+    </div>
+  </details>
+  <% if (typeof searchError !== 'undefined' && searchError) { %><p class="mt-3 text-sm text-destructive" role="alert" data-message-type="error" data-feedback-message="<%= searchError %>"><%= searchError %></p><% } %>
+</div>

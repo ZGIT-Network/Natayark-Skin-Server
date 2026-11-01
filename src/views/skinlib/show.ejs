@@ -72,11 +72,11 @@
     <div class="card">
       <div class="card-header"><div><h2 class="card-title">描述</h2></div></div>
       <div class="card-content">
-        <p id="texture-description" class="whitespace-pre-line text-sm leading-relaxed text-muted-foreground"><%= description || '暂无描述' %></p>
+        <div id="texture-description" class="prose text-sm leading-relaxed"><%- descriptionHtml || '<p class="text-muted-foreground">暂无描述</p>' %></div>
         <% if (isOwner || isAdmin) { %>
-        <form data-action="save-description" data-tid="<%= texture.tid %>" class="mt-4 flex gap-1.5">
-          <input class="input" name="description" value="<%= description %>" maxlength="255" placeholder="添加描述…">
-          <button class="btn btn-outline" type="submit">保存</button>
+        <form data-action="save-description" data-tid="<%= texture.tid %>" class="mt-4 space-y-3">
+          <label class="field"><span class="label">编辑描述</span><textarea class="textarea" name="description" rows="6" <%- descriptionMaxLength ? 'maxlength="' + descriptionMaxLength + '"' : '' %> placeholder="支持 Markdown，可填写作者、来源与使用说明。"><%= description %></textarea><span class="field-hint"><%= descriptionMaxLength ? '最多 ' + descriptionMaxLength + ' 个字符。' : '正文最多 64KB。' %></span></label>
+          <button class="btn btn-outline btn-sm" type="submit"><%- icon('check') %>保存描述</button>
         </form>
         <% } %>
       </div>
@@ -107,5 +107,5 @@
 </dialog>
 <% } %>
 
-<script src="/vendor/skinview3d.js" defer></script>
+<script src="/vendor/skinview3d.js?v=8" defer></script>
 <%- include('../partials/layout-bottom') %>

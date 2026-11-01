@@ -5,7 +5,7 @@ import { pool } from './db.js';
 const app = await createApp();
 try {
   await app.listen({ port: config.port, host: config.host });
-  console.log('MCNSKIN listening on http://' + config.host + ':' + config.port);
+  console.log('Natayark Skin Server listening on http://' + config.host + ':' + config.port);
 } catch (error) {
   app.log.error(error);
   await pool.end();

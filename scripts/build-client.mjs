@@ -23,4 +23,10 @@ if (fs.existsSync(fontSource)) {
 }
 
 fs.mkdirSync(path.join(root, 'public', 'css'), { recursive: true });
+// Bundled code and fonts retain the notices of their actual dependencies.
+const licenses = path.join(root, 'public', 'licenses');
+fs.mkdirSync(licenses, { recursive: true });
+for (const [name, output] of [['skinview3d','skinview3d-MIT.txt'],['skinview-utils','skinview-utils-MIT.txt'],['three','three-MIT.txt'],['@fontsource-variable/inter','inter-OFL-1.1.txt']]) {
+  fs.copyFileSync(path.join(root,'node_modules',name,'LICENSE'),path.join(licenses,output));
+}
 console.log('client bundles built');

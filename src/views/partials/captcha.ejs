@@ -1,0 +1,8 @@
+<% if (typeof recaptchaSiteKey !== 'undefined' && recaptchaSiteKey) { %>
+<div class="min-w-0" data-captcha-widget data-sitekey="<%= recaptchaSiteKey %>" data-invisible="<%= typeof recaptchaInvisible !== 'undefined' && recaptchaInvisible ? 'true' : 'false' %>" data-required="<%= t('captcha.required') %>" data-expired="<%= t('captcha.expired') %>" data-error="<%= t('captcha.error') %>" data-loading="<%= t('captcha.loading') %>"></div>
+<p class="field-hint text-destructive" role="alert" hidden></p>
+<script src="/js/captcha.js"></script>
+<script src="https://www.recaptcha.net/recaptcha/api.js?onload=natayarkCaptchaReady&amp;render=explicit" async defer></script>
+<% } else { %>
+<label class="field"><span class="label"><%= t('captcha.label') %></span><span class="flex gap-2 items-center"><input class="input min-w-0" name="captcha" autocomplete="off" required maxlength="5" aria-label="<%= t('captcha.label') %>"><button type="button" class="shrink-0 border border-border overflow-hidden" data-refresh-captcha aria-label="<%= t('captcha.refresh') %>"><img src="/auth/captcha?<%= Date.now() %>" width="120" height="40" alt="<%= t('captcha.image') %>"></button></span></label>
+<% } %>

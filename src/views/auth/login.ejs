@@ -25,17 +25,19 @@
 <% } %>
 
 <% if (localLoginEnabled) { %>
-<form method="post" action="/auth/login" class="grid gap-4">
+<form method="post" action="/auth/login" class="grid grid-cols-1 gap-4">
   <input type="hidden" name="csrf" value="<%= csrf %>">
   <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' ? redirect : '' %>">
   <label class="field">
-    <span class="label"><%= t('auth.email') %></span>
-    <input type="email" class="input" id="email" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>" placeholder="you@example.com" required autofocus autocomplete="username">
+    <span class="label"><%= t('auth.identification') %></span>
+    <input type="text" class="input" id="email" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>" placeholder="you@example.com / PlayerName" required autofocus autocomplete="username">
   </label>
   <label class="field">
     <span class="label"><%= t('auth.password') %></span>
     <input type="password" class="input" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
   </label>
+  <% if (typeof captchaRequired !== 'undefined' && captchaRequired) { %><%- include('../partials/captcha') %><% } %>
+  <label class="flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" name="keep" value="true"><%= t('auth.keep-login') %></label>
   <button type="submit" class="btn btn-primary btn-lg w-full"><%= t('general.login') %></button>
 </form>
 

@@ -1,0 +1,336 @@
+{
+    "reference": "Original laravel-search-string package; no SQL executed",
+    "now": "2026-11-01T07:26:37.000Z",
+    "timezone": "Asia/Shanghai",
+    "queries": [
+        {
+            "entity": "users",
+            "expression": "score >= 200 and permission:0",
+            "sql": "select * from `users` where (`users`.`score` >= ? and `users`.`permission` = ?)",
+            "bindings": [
+                200,
+                0
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "not (verified or permission > 0)",
+            "sql": "select * from `users` where (`users`.`verified` = ? and `users`.`permission` <= ?)",
+            "bindings": [
+                false,
+                0
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "nickname:\"Alpha User\" or nickname:Beta",
+            "sql": "select * from `users` where (`users`.`nickname` = ? or `users`.`nickname` = ?)",
+            "bindings": [
+                "Alpha User",
+                "Beta"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "uid in (1,2,3)",
+            "sql": "select * from `users` where `users`.`uid` in (?, ?, ?)",
+            "bindings": [
+                "1",
+                "2",
+                "3"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "permission:-1,0",
+            "sql": "select * from `users` where `users`.`permission` in (?, ?)",
+            "bindings": [
+                "-1",
+                "0"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "not nickname:Alpha",
+            "sql": "select * from `users` where `users`.`nickname` != ?",
+            "bindings": [
+                "Alpha"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "not \"Alpha User\"",
+            "sql": "select * from `users` where (`users`.`email` not like ? and `users`.`nickname` not like ?)",
+            "bindings": [
+                "%Alpha User%",
+                "%Alpha User%"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "verified",
+            "sql": "select * from `users` where `users`.`verified` = ?",
+            "bindings": [
+                true
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "not verified",
+            "sql": "select * from `users` where `users`.`verified` = ?",
+            "bindings": [
+                false
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "verified:true",
+            "sql": "select * from `users` where `users`.`verified` = ?",
+            "bindings": [
+                "true"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "verified:false",
+            "sql": "select * from `users` where `users`.`verified` = ?",
+            "bindings": [
+                "false"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "email:NULL",
+            "sql": "select * from `users` where `users`.`email` is null",
+            "bindings": []
+        },
+        {
+            "entity": "users",
+            "expression": "not email:NULL",
+            "sql": "select * from `users` where `users`.`email` is not null",
+            "bindings": []
+        },
+        {
+            "entity": "users",
+            "expression": "last_sign_at",
+            "sql": "select * from `users` where (`users`.`email` like ? or `users`.`nickname` like ?)",
+            "bindings": [
+                "%last_sign_at%",
+                "%last_sign_at%"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at:2020",
+            "sql": "select * from `users` where (`users`.`register_at` >= ? and `users`.`register_at` <= ?)",
+            "bindings": [
+                "2020-01-01 00:00:00",
+                "2020-12-31 23:59:59"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at > 2020",
+            "sql": "select * from `users` where `users`.`register_at` > ?",
+            "bindings": [
+                "2020-12-31 23:59:59"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at <= \"Jan 2020\"",
+            "sql": "select * from `users` where `users`.`register_at` <= ?",
+            "bindings": [
+                "2020-01-31 23:59:59"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at:\"2020-12-31 16:30\"",
+            "sql": "select * from `users` where (`users`.`register_at` >= ? and `users`.`register_at` <= ?)",
+            "bindings": [
+                "2020-12-31 16:30:00",
+                "2020-12-31 16:30:59"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at:\"Dec 31 2020 5pm\"",
+            "sql": "select * from `users` where (`users`.`register_at` >= ? and `users`.`register_at` <= ?)",
+            "bindings": [
+                "2020-12-31 17:00:00",
+                "2020-12-31 17:59:59"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at:today",
+            "sql": "select * from `users` where (`users`.`register_at` >= ? and `users`.`register_at` <= ?)",
+            "bindings": [
+                "2026-11-01 00:00:00",
+                "2026-11-01 23:59:59"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at >= tomorrow",
+            "sql": "select * from `users` where `users`.`register_at` >= ?",
+            "bindings": [
+                "2026-11-02 00:00:00"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "register_at:\"3 days ago\"",
+            "sql": "select * from `users` where `users`.`register_at` = ?",
+            "bindings": [
+                "2026-10-29 15:26:37"
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "score>0 sort:-score,uid fields:uid,nickname",
+            "sql": "select `users`.`uid`, `users`.`nickname` from `users` where `users`.`score` > ? order by `users`.`score` desc, `users`.`uid` asc",
+            "bindings": [
+                0
+            ]
+        },
+        {
+            "entity": "users",
+            "expression": "not fields:email,ip sort:uid limit:1 from:10",
+            "sql": "select `users`.`uid`, `users`.`nickname`, `users`.`avatar`, `users`.`score`, `users`.`permission`, `users`.`last_sign_at`, `users`.`register_at`, `users`.`verified`, `users`.`is_dark_mode` from `users` order by `users`.`uid` asc limit 1 offset 10",
+            "bindings": []
+        },
+        {
+            "entity": "players",
+            "expression": "skin:1 not cape:0",
+            "sql": "select * from `players` where (`players`.`tid_skin` = ? and `players`.`tid_cape` != ?)",
+            "bindings": [
+                1,
+                0
+            ]
+        },
+        {
+            "entity": "players",
+            "expression": "name:\"Alpha Player\" or uid:2",
+            "sql": "select * from `players` where (`players`.`name` = ? or `players`.`uid` = ?)",
+            "bindings": [
+                "Alpha Player",
+                2
+            ]
+        },
+        {
+            "entity": "players",
+            "expression": "sort:-skin,pid",
+            "sql": "select * from `players` order by `players`.`tid_skin` desc, `players`.`pid` asc",
+            "bindings": []
+        }
+    ],
+    "dates": [
+        {
+            "value": "2020",
+            "range": [
+                "2020-01-01 00:00:00",
+                "2020-12-31 23:59:59"
+            ]
+        },
+        {
+            "value": "01/2020",
+            "range": [
+                "2020-01-01 00:00:00",
+                "2020-01-31 23:59:59"
+            ]
+        },
+        {
+            "value": "2020-12-31",
+            "range": [
+                "2020-12-31 00:00:00",
+                "2020-12-31 23:59:59"
+            ]
+        },
+        {
+            "value": "2020-12-31 16",
+            "range": [
+                "2020-12-31 16:00:00",
+                "2020-12-31 16:59:59"
+            ]
+        },
+        {
+            "value": "2020-12-31 16:30",
+            "range": [
+                "2020-12-31 16:30:00",
+                "2020-12-31 16:30:59"
+            ]
+        },
+        {
+            "value": "2020-12-31 16:30:10",
+            "range": [
+                "2020-12-31 16:30:10",
+                "2020-12-31 16:30:10"
+            ]
+        },
+        {
+            "value": "Dec 31 2020 5pm",
+            "range": [
+                "2020-12-31 17:00:00",
+                "2020-12-31 17:59:59"
+            ]
+        },
+        {
+            "value": "today",
+            "range": [
+                "2026-11-01 00:00:00",
+                "2026-11-01 23:59:59"
+            ]
+        },
+        {
+            "value": "tomorrow",
+            "range": [
+                "2026-11-02 00:00:00",
+                "2026-11-02 23:59:59"
+            ]
+        },
+        {
+            "value": "yesterday",
+            "range": [
+                "2026-10-31 00:00:00",
+                "2026-10-31 23:59:59"
+            ]
+        },
+        {
+            "value": "3 days ago",
+            "range": [
+                "2026-10-29 15:26:37",
+                "2026-10-29 15:26:37"
+            ]
+        },
+        {
+            "value": "next week",
+            "range": [
+                "2026-11-02 15:26:37",
+                "2026-11-02 15:26:37"
+            ]
+        },
+        {
+            "value": "this week",
+            "range": [
+                "2026-10-26 15:26:37",
+                "2026-10-26 15:26:37"
+            ]
+        },
+        {
+            "value": "last month",
+            "range": [
+                "2026-10-01 15:26:37",
+                "2026-10-01 15:26:37"
+            ]
+        },
+        {
+            "value": "next year",
+            "range": [
+                "2027-11-01 15:26:37",
+                "2027-11-01 15:26:37"
+            ]
+        }
+    ]
+}
