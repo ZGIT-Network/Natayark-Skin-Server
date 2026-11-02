@@ -6,7 +6,7 @@
 <div class="dropdown" data-dropdown data-locale-menu>
   <button type="button" class="btn btn-ghost btn-sm" data-dropdown-trigger aria-label="<%= t('locale.choose') %>" aria-haspopup="menu" aria-expanded="false">
     <%- icon('globe') %>
-    <span class="hidden sm:inline"><%= __locale === 'en' ? 'English' : '简体中文' %></span>
+    <span class="language-label hidden sm:inline"><%= __locale === 'en' ? 'English' : '简体中文' %></span>
     <%- icon('chevron-down', 'size-3 opacity-60') %>
   </button>
   <div class="dropdown-menu" data-dropdown-menu role="menu" hidden>

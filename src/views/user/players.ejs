@@ -1,10 +1,12 @@
-<%- include('../partials/layout-user-top', { title: t('general.player-manage'), pageDescription: '每个角色可以独立设置皮肤、披风与模型。' }) %>
+<%- include('../partials/layout-user-top', { title: t('general.player-manage'), pageDescription: t('player.page-description') }) %>
 
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-  <p class="text-sm text-muted-foreground">共 <%= players.length %> 个角色</p>
-  <button type="button" class="btn btn-primary" data-dialog-open="dialog-add">
+  <p class="text-sm text-muted-foreground"><%= t('player.count', { count: players.length }) %><% if(usage.playerLimit!==null){ %> · <%= t('usage.fixed-cap',{count:usage.playerLimit}) %><% } %></p>
+  <% if(usage.singlePlayer&&players.length===0){ %><a href="/user/bind-player" class="btn btn-primary"><%= t('player.add') %></a><% }else{ %>
+  <button type="button" class="btn btn-primary" data-dialog-open="dialog-add" <%= usage.players.remaining===0||usage.singlePlayer?'disabled':'' %> title="<%= usage.players.remaining===0||usage.singlePlayer?t('player.cannot-add'):'' %>">
     <%- icon('plus') %><%= t('player.add') %>
   </button>
+  <% } %>
 </div>
 
 <% if (players.length === 0) { %>
@@ -12,8 +14,8 @@
   <div class="empty-state">
     
     <div class="empty-state-title"><%= t('user.no-players') %></div>
-    <div class="empty-state-text">添加角色消耗 <%= scorePerPlayer %> 积分。</div>
-    <button type="button" class="btn btn-primary btn-sm" data-dialog-open="dialog-add"><%- icon('plus') %><%= t('player.add') %></button>
+    <div class="empty-state-text"><%= t('player.add-cost', { score: scorePerPlayer }) %></div>
+    <% if(usage.singlePlayer){ %><a href="/user/bind-player" class="btn btn-primary btn-sm"><%= t('player.add') %></a><% }else{ %><button type="button" class="btn btn-primary btn-sm" data-dialog-open="dialog-add" <%= usage.players.remaining===0?'disabled':'' %>><%- icon('plus') %><%= t('player.add') %></button><% } %>
   </div>
 </div>
 <% } else { %>
@@ -36,15 +38,15 @@
         <span class="badge badge-outline"><%= p.model === 'slim' ? 'Alex' : 'Steve' %></span>
       </div>
       <div class="mt-3 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
-        <span class="badge badge-secondary">皮肤 <%= p.skinTid ? '#' + p.skinTid : '未设置' %></span>
-        <span class="badge badge-secondary">披风 <%= p.capeTid ? '#' + p.capeTid : '未设置' %></span>
+        <span class="badge badge-secondary"><%= t('player.skin-tid', { tid: p.skinTid ? '#' + p.skinTid : t('common.not-set') }) %></span>
+        <span class="badge badge-secondary"><%= t('player.cape-tid', { tid: p.capeTid ? '#' + p.capeTid : t('common.not-set') }) %></span>
       </div>
       <div class="mt-3 grid grid-cols-2 gap-1.5">
-        <button type="button" class="btn btn-outline btn-sm" data-dialog-open="dialog-set-<%= p.pid %>">设置材质</button>
-        <button type="button" class="btn btn-outline btn-sm" data-action="rename-player" data-pid="<%= p.pid %>" data-name="<%= p.name %>"><%- icon('pencil') %>改名</button>
+        <button type="button" class="btn btn-outline btn-sm" data-dialog-open="dialog-set-<%= p.pid %>"><%= t('player.set-texture') %></button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="rename-player" data-pid="<%= p.pid %>" data-name="<%= p.name %>"><%- icon('pencil') %><%= t('common.rename') %></button>
       </div>
       <button type="button" class="btn btn-ghost btn-sm mt-1.5 w-full text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="delete-player" data-pid="<%= p.pid %>" data-name="<%= p.name %>">
-        <%- icon('trash-2') %>删除角色
+        <%- icon('trash-2') %><%= t('player.delete') %>
       </button>
     </div>
   </article>
@@ -55,19 +57,19 @@
 <% for (const p of players) { %>
 <dialog class="dialog dialog-wide" id="dialog-set-<%= p.pid %>">
   <div class="dialog-header">
-    <h2 class="dialog-title">为 <%= p.name %> 设置材质</h2>
-    <p class="dialog-description">从你的衣柜中选择皮肤或披风。</p>
-    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+    <h2 class="dialog-title"><%= t('player.set-texture-for', { name: p.name }) %></h2>
+    <p class="dialog-description"><%= t('player.choose-closet') %></p>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="<%= t('common.close') %>"><%- icon('x') %></button>
   </div>
   <div class="dialog-body space-y-6">
     <%- include('../partials/previewer', { skinUrl: p.skinHash ? '/textures/' + p.skinHash : '', capeUrl: p.capeHash ? '/textures/' + p.capeHash : '', previewModel: p.model, flatSkin: p.skinTid ? '/preview/' + p.skinTid + '?v=4&png' : '/preview/default?v=4&png', flatCape: p.capeTid ? '/preview/' + p.capeTid + '?v=4&png' : '' }) %>
     <section>
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 class="text-sm font-semibold">皮肤</h3>
-          <p class="mt-0.5 text-xs text-muted-foreground">当前：<%= p.skinTid ? '#' + p.skinTid : '未设置' %></p>
+          <h3 class="text-sm font-semibold"><%= t('player.skin') %></h3>
+          <p class="mt-0.5 text-xs text-muted-foreground"><%= t('player.current') %>：<%= p.skinTid ? '#' + p.skinTid : t('common.not-set') %></p>
         </div>
-        <button type="button" class="btn btn-outline btn-sm" data-action="clear-texture" data-pid="<%= p.pid %>" data-type="skin">清除</button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="clear-texture" data-pid="<%= p.pid %>" data-type="skin"><%= t('player.clear') %></button>
       </div>
       <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
         <% const skinItems = closet.filter(c => c.type !== 'cape'); %>
@@ -79,7 +81,7 @@
         <% } %>
         <% if (skinItems.length === 0) { %>
         <p class="col-span-full rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-          衣柜中没有皮肤，<a href="/skinlib" class="text-brand-strong hover:underline dark:text-brand">去皮肤库挑选</a>。
+          <%= t('player.no-skins') %><a href="/skinlib" class="text-brand-strong hover:underline dark:text-brand"><%= t('player.go-skinlib') %></a>
         </p>
         <% } %>
       </div>
@@ -88,10 +90,10 @@
     <section>
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 class="text-sm font-semibold">披风</h3>
-          <p class="mt-0.5 text-xs text-muted-foreground">当前：<%= p.capeTid ? '#' + p.capeTid : '未设置' %></p>
+          <h3 class="text-sm font-semibold"><%= t('player.cape') %></h3>
+          <p class="mt-0.5 text-xs text-muted-foreground"><%= t('player.current') %>：<%= p.capeTid ? '#' + p.capeTid : t('common.not-set') %></p>
         </div>
-        <button type="button" class="btn btn-outline btn-sm" data-action="clear-texture" data-pid="<%= p.pid %>" data-type="cape">清除</button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="clear-texture" data-pid="<%= p.pid %>" data-type="cape"><%= t('player.clear') %></button>
       </div>
       <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
         <% const capeItems = closet.filter(c => c.type === 'cape'); %>
@@ -102,7 +104,7 @@
         </button>
         <% } %>
         <% if (capeItems.length === 0) { %>
-        <p class="col-span-full rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">衣柜中没有披风。</p>
+        <p class="col-span-full rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground"><%= t('player.no-capes') %></p>
         <% } %>
       </div>
     </section>
@@ -113,15 +115,15 @@
 <dialog class="dialog" id="dialog-add">
   <div class="dialog-header">
     <h2 class="dialog-title"><%= t('player.add') %></h2>
-    <p class="dialog-description">将消耗 <%= scorePerPlayer %> 积分。</p>
-    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+    <p class="dialog-description"><%= t('player.add-cost-hint', { score: scorePerPlayer }) %></p>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="<%= t('common.close') %>"><%- icon('x') %></button>
   </div>
   <form data-action="add-player">
     <div class="dialog-body">
       <label class="field">
         <span class="label"><%= t('player.name') %></span>
         <input class="input" id="new-player-name" name="name" required minlength="3" maxlength="16" autofocus>
-        <span class="field-hint">名称须符合本站命名规则。</span>
+        <span class="field-hint"><%= t('player.name-rule-help') %></span>
       </label>
       <p class="mt-2 hidden text-sm text-destructive" data-form-error></p>
     </div>

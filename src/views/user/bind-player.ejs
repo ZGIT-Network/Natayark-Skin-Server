@@ -1,4 +1,4 @@
-<%- include('../partials/layout-user-top', { title: '绑定角色', pageDescription: '使用启动器中的游戏名称绑定角色。' }) %>
+<%- include('../partials/layout-user-top', { title: t('bind-player.title'), pageDescription: t('bind-player.description') }) %>
 
 <div class="max-w-lg">
   <% if (error) { %>
@@ -12,10 +12,10 @@
       <form method="post" class="grid gap-4">
         <input type="hidden" name="csrf" value="<%= csrf %>">
         <label class="field">
-          <span class="label">角色名</span>
+          <span class="label"><%= t('bind-player.name') %></span>
           <input class="input" id="name" name="name" required maxlength="50" autocomplete="nickname">
         </label>
-        <button class="btn btn-primary">绑定角色</button>
+        <button class="btn btn-primary"><%= t('bind-player.submit') %></button>
       </form>
     </div>
   </div>

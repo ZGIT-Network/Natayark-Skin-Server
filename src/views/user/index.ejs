@@ -5,7 +5,7 @@
   <%- icon('key-round') %>
   <div>
     <div class="alert-title"><%= t('user.set-password-hint') %></div>
-    <a href="/auth/oauth/set-password" class="mt-1 inline-block">立即设置密码</a>
+    <a href="/auth/oauth/set-password" class="mt-1 inline-block"><%= t('common.set-password-now') %></a>
   </div>
 </div>
 <% } %>
@@ -16,9 +16,9 @@
       <div class="card-header">
         <div>
           <h2 class="card-title"><%= t('general.player-manage') %></h2>
-          <p class="card-description">共 <%= players.length %> 个角色</p>
+          <p class="card-description"><%= t('common.count-players', { count: players.length }) %></p>
         </div>
-        <a href="/user/player" class="btn btn-outline btn-sm">管理角色</a>
+        <a href="/user/player" class="btn btn-outline btn-sm"><%= t('common.manage-players') %></a>
       </div>
       <div class="card-content">
         <% if (players.length === 0) { %>
@@ -64,12 +64,20 @@
   </div>
 
   <aside class="space-y-5">
-    <div class="stat-card">
-      <div class="min-w-0 flex-1">
-        <div class="stat-label"><%= t('user.score') %></div>
-        <div class="stat-value" data-user-score><%= user.score %></div>
+    <section class="card account-usage" data-account-usage aria-label="<%= t('usage.title') %>">
+      <div class="card-header">
+        <h2 class="card-title"><%= t('usage.title') %></h2>
+        <span class="usage-credit"><%= t('user.score') %> <strong data-user-score><%= user.score %></strong></span>
       </div>
-    </div>
+      <% for (const [key,label] of [['players',t('usage.players')],['storage',t('usage.storage')]]) { const item=usage[key]; %>
+      <div class="usage-item">
+        <div class="usage-row"><span class="usage-label"><%= label %></span><p class="usage-value"><strong data-usage-value="<%= key %>.used"><%= item.used %></strong><span>/</span><span data-usage-value="<%= key %>.limit"><%= item.limit ?? '∞' %></span><% if (key === 'storage') { %><small>KB</small><% } %></p></div>
+        <progress class="usage-progress" data-usage-progress="<%= key %>" aria-label="<%= label %>" value="<%= Math.min(item.used,item.limit??Math.max(item.used,1)) %>" max="<%= Math.max(1,item.limit??item.used) %>" <%= item.limit === null ? 'hidden' : '' %>></progress>
+        <div class="usage-remaining"><span><%= t('usage.remaining') %> <span data-usage-value="<%= key %>.remaining"><%= item.remaining ?? '∞' %></span><% if (key === 'storage') { %> KB<% } %></span><% if (key === 'players' && usage.singlePlayer) { %><span><%= t('usage.single-player') %></span><% } else if(key==='players'&&usage.playerLimit!==null){ %><span><%= t('usage.fixed-cap',{count:usage.playerLimit}) %></span><% } %></div>
+      </div>
+      <% } %>
+      <details class="usage-help"><summary><%= t('usage.explanation') %></summary><p class="field-hint mt-2"><%= t('usage.shared-help') %> <%= t('usage.private-help') %> <span data-usage-value="privateStorageRemaining"><%= usage.privateStorageRemaining ?? '∞' %></span> KB<%= t('usage.estimate-help') %></p></details>
+    </section>
 
     <section class="card">
       <div class="card-content">
@@ -95,7 +103,7 @@
         <p class="field-hint" id="launcher-drag-help"><%= t('user.launcher-drag-help') %></p>
         <div class="flex gap-1.5">
           <input class="input min-w-0 font-mono text-xs" id="ygg-url" readonly value="<%= launcherApiRoot %>" aria-label="<%= t('user.launcher-api-root') %>">
-          <button type="button" class="btn btn-outline btn-icon" data-copy="#ygg-url" aria-label="复制">
+          <button type="button" class="btn btn-outline btn-icon" data-copy="#ygg-url" aria-label="<%= t('common.copy') %>">
             <%- icon('copy') %>
           </button>
         </div>

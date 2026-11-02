@@ -1,21 +1,22 @@
-<%- include('../partials/layout-user-top', { title: '客户端配置', pageDescription: '将站点加入皮肤 Mod 的配置，即可在游戏中显示皮肤。' }) %>
+<% const playerPlaceholder = locale === 'en' ? '{player}' : '{角色名}'; %>
+<%- include('../partials/layout-user-top', { title: t('config.title'), pageDescription: t('config.description') }) %>
 
 <div class="grid gap-5 lg:grid-cols-2">
   <section class="card">
     <div class="card-header">
       <div>
         <h2 class="card-title">CustomSkinLoader</h2>
-        <p class="card-description">保存为游戏目录中的 CustomSkinLoader/CustomSkinLoader.json。</p>
+        <p class="card-description"><%= t('config.csl-help') %></p>
       </div>
       <div class="flex gap-1.5">
-        <a href="/user/config?download=csl" class="btn btn-primary btn-sm">主配置</a>
+        <a href="/user/config?download=csl" class="btn btn-primary btn-sm"><%= t('config.main') %></a>
         <a href="/user/config?download=extra" class="btn btn-outline btn-sm">ExtraList</a>
       </div>
     </div>
     <div class="card-content">
       <div class="relative">
         <pre class="code-block" id="csl-json"><%= JSON.stringify(csl, null, 2) %></pre>
-        <button type="button" class="btn btn-outline btn-icon btn-sm absolute right-2 top-2" data-copy="#csl-json" aria-label="复制配置"><%- icon('copy') %></button>
+        <button type="button" class="btn btn-outline btn-icon btn-sm absolute right-2 top-2" data-copy="#csl-json" aria-label="<%= t('config.copy') %>"><%- icon('copy') %></button>
       </div>
     </div>
   </section>
@@ -24,29 +25,29 @@
     <div class="card-header">
       <div>
         <h2 class="card-title">Universal Skin Mod</h2>
-        <p class="card-description">将配置加入 UniSkinMod。</p>
+        <p class="card-description"><%= t('config.usm-help') %></p>
       </div>
-      <a href="/user/config?download=usm" class="btn btn-primary btn-sm">下载配置</a>
+      <a href="/user/config?download=usm" class="btn btn-primary btn-sm"><%= t('config.download') %></a>
     </div>
     <div class="card-content">
       <div class="relative">
         <pre class="code-block" id="usm-json"><%= JSON.stringify(usm, null, 2) %></pre>
-        <button type="button" class="btn btn-outline btn-icon btn-sm absolute right-2 top-2" data-copy="#usm-json" aria-label="复制配置"><%- icon('copy') %></button>
+        <button type="button" class="btn btn-outline btn-icon btn-sm absolute right-2 top-2" data-copy="#usm-json" aria-label="<%= t('config.copy') %>"><%- icon('copy') %></button>
       </div>
     </div>
   </section>
 </div>
 
 <section class="card mt-5">
-  <div class="card-header"><div><h2 class="card-title">旧版皮肤接口</h2><p class="card-description">将角色名替换到下方地址中。</p></div></div>
+  <div class="card-header"><div><h2 class="card-title"><%= t('config.legacy') %></h2><p class="card-description"><%= t('config.legacy-help') %></p></div></div>
   <div class="card-content space-y-2">
     <div class="flex items-center gap-2">
-      <code class="code-block flex-1 py-2" id="legacy-skin"><%= origin %>/skin/{角色名}.png</code>
-      <button type="button" class="btn btn-outline btn-icon" data-copy="#legacy-skin" aria-label="复制"><%- icon('copy') %></button>
+      <code class="code-block flex-1 py-2" id="legacy-skin"><%= origin %>/skin/<%= playerPlaceholder %>.png</code>
+      <button type="button" class="btn btn-outline btn-icon" data-copy="#legacy-skin" aria-label="<%= t('common.copy') %>"><%- icon('copy') %></button>
     </div>
     <div class="flex items-center gap-2">
-      <code class="code-block flex-1 py-2" id="legacy-cape"><%= origin %>/cape/{角色名}.png</code>
-      <button type="button" class="btn btn-outline btn-icon" data-copy="#legacy-cape" aria-label="复制"><%- icon('copy') %></button>
+      <code class="code-block flex-1 py-2" id="legacy-cape"><%= origin %>/cape/<%= playerPlaceholder %>.png</code>
+      <button type="button" class="btn btn-outline btn-icon" data-copy="#legacy-cape" aria-label="<%= t('common.copy') %>"><%- icon('copy') %></button>
     </div>
   </div>
 </section>

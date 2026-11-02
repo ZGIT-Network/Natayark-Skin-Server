@@ -3,14 +3,18 @@
   const __path = typeof currentPath !== 'undefined' ? currentPath : '/';
 %>
 <header class="topbar">
-  <button type="button" class="btn btn-ghost btn-icon btn-sm lg:hidden" data-sidebar-toggle aria-label="打开菜单">
+  <button type="button" class="btn btn-ghost btn-icon btn-sm lg:hidden" data-sidebar-toggle aria-label="<%= t('nav.open-menu') %>">
     <%- icon('menu') %>
   </button>
   <a href="/" class="flex items-center gap-2 lg:hidden">
     <span class="site-wordmark"><%= typeof siteName !== 'undefined' ? siteName : '' %></span>
   </a>
 
-  <div class="ml-auto flex items-center gap-1">
+  <% if (typeof user !== 'undefined' && user && typeof hitokotoEnabled !== 'undefined' && hitokotoEnabled) { %>
+  <p class="topbar-quote" data-site-quote aria-live="polite"></p>
+  <% } %>
+
+  <div class="ml-auto flex shrink-0 items-center gap-1" data-topbar-actions>
     <%- include('theme-menu') %>
 
     <%- include('languages') %>

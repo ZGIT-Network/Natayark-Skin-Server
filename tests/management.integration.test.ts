@@ -11,11 +11,12 @@ import { setSessionCookie, tokenHash } from '../src/services/session.js';
 import { getOption, setOption, loadOptions } from '../src/services/option.js';
 import { issueAccessToken, getSystemClientId } from '../src/services/token.js';
 import { uploadTexture, deleteTexture, texturePath, getDescription, type Texture } from '../src/services/texture.js';
+import {pluginEnabled} from '../src/services/plugins.js';
 
 test('legacy management interfaces and finished account pages', {skip:!config.db.tablePrefix.startsWith('dev_')}, async t => {
   const app = await createApp(), suffix = crypto.randomBytes(4).toString('hex');
   const users:Array<{uid:number;name:string;email:string;cookie:string;csrf:string}>=[],textures:Texture[]=[];
-  const keys=['copyright_text','textures_description_limit','require_verification'];
+  const keys=['copyright_text','textures_description_limit','require_verification','plugins_enabled','max_players_per_user','mojang_verification_score_award'];
   const before=await query<any>(`SELECT * FROM options WHERE option_name IN (${keys.map(()=>'?')})`,keys);
   const account=async(label:string,permission=0)=>{
     const name=label+suffix,email=name+'@example.test';
@@ -49,9 +50,35 @@ test('legacy management interfaces and finished account pages', {skip:!config.db
       const status=await app.inject({url:'/admin/status',headers:{cookie:admin.cookie}});
       const manifest=JSON.parse(await fs.readFile(new URL('../package.json',import.meta.url),'utf8'));
       assert.ok(status.body.includes('<code data-app-version>'+manifest.version+'</code>'));
+      for(const section of ['status.environment','status.process','status.database','status.storage'])assert.ok(status.body.includes('data-status-section="'+section+'"'),section);
+      for(const label of ['进程内存 RSS','查询延迟','当前命名空间表数','所在磁盘 可用 / 总计'])assert.ok(status.body.includes(label),label);
+      for(const secret of [config.appKey,config.db.password,config.mail.password].filter(value=>value.length>=8))assert.ok(!status.body.includes(secret),'System status must not disclose credentials');
+      assert.notEqual((await app.inject('/admin/status')).statusCode,200);
+      const deniedStatus=await app.inject({url:'/admin/status',headers:{cookie:reader.cookie}});
+      assert.equal(deniedStatus.statusCode,302);assert.equal(deniedStatus.headers.location,'/user?notice=permission-denied');
       assert.match(status.body,/<button[^>]*data-check-updates[^>]*disabled/);
       assert.match(status.body,/更新检查尚未启用/);
       assert.equal((await app.inject({url:'/admin/score',headers:{cookie:admin.cookie}})).headers.location,'/admin/settings#score');
+    });
+    await t.test('role settings validate persistence and enforce the saved count on the API',async()=>{
+      const previous={plugins:await getOption('plugins_enabled','[]'),limit:await getOption('max_players_per_user','0'),reward:await getOption('mojang_verification_score_award','0')};
+      try{
+        const saved=await write('POST','/admin/settings',{max_players_per_user:'1',single_player_limit:'false',mojang_verification_score_award:'123'});
+        assert.equal(saved.headers.location,'/admin/settings?saved=1');
+        assert.equal(await getOption('max_players_per_user'),'1');assert.equal(await pluginEnabled('single-player-limit'),false);assert.equal(await getOption('mojang_verification_score_award'),'123');
+        const reload=await app.inject({url:'/admin/settings',headers:{cookie:admin.cookie}});
+        assert.match(reload.body,/name="max_players_per_user" value="1"/);assert.match(reload.body,/name="single_player_limit"/);
+        const blocked=await write('POST','/api/player',{name:'TooMany'+suffix});assert.equal(blocked.statusCode,400);assert.match(blocked.json().message,/上限/);
+        for(const value of ['-1','1.5','1000001','bad'])assert.match(String((await write('POST','/admin/settings',{max_players_per_user:value})).headers.location),/error=player-limit/);
+        assert.equal(await getOption('max_players_per_user'),'1');
+        assert.equal((await app.inject({method:'POST',url:'/admin/settings',headers:{cookie:reader.cookie},payload:{csrf:reader.csrf,max_players_per_user:'9'}})).headers.location,'/user?notice=permission-denied');
+        assert.equal(await getOption('max_players_per_user'),'1');
+        await write('POST','/admin/settings',{max_players_per_user:'5',single_player_limit:'true'});assert.equal(await pluginEnabled('single-player-limit'),true);
+        assert.equal((await app.inject({url:'/user/usage',headers:{cookie:admin.cookie}})).json().players.limit,1);
+      }finally{
+        await setOption('plugins_enabled',previous.plugins);await setOption('max_players_per_user',previous.limit);await setOption('mojang_verification_score_award',previous.reward);
+        await exec('DELETE FROM `uuid` WHERE name=?',['TooMany'+suffix]);
+      }
     });
     await t.test('role texture aliases validate type, CSRF, access scope and clear operations',async()=>{
       assert.equal((await write('PUT','/admin/players/'+player.pid+'/textures',{tid:skin.tid,type:'skin'},reader)).statusCode,403);

@@ -1,4 +1,4 @@
-<%- include('../partials/layout-user-top', { title: t('general.customize'), scope: 'admin', pageDescription: '配置站点、注册、积分、Yggdrasil 与登录方式。' }) %>
+<%- include('../partials/layout-user-top', { title: t('general.customize'), scope: 'admin', pageDescription: t('admin.settings-description') }) %>
 
 <% if (saved) { %>
 <div class="alert alert-success mb-5" role="status" data-feedback-message="已保存。">
@@ -15,6 +15,9 @@
     'appearance-invalid': '外观设置无效，请检查颜色、首页样式和图片地址。',
     'description-limit': '描述字数上限必须是 0–65535 之间的整数。',
     'recaptcha-invalid':'reCAPTCHA 需要有效的 Site key 和 Secret key；留空 Site key 使用本站图片验证码。',
+    'player-limit':'角色上限必须是 0–1000000 之间的整数；0 表示不设固定上限。',
+    'verification-reward':'正版验证奖励必须是 0–2147483647 之间的整数。',
+    'plugins-invalid':'现有插件开关配置格式无效，未修改角色模式。',
   };
 %>
 <div class="alert alert-destructive mb-5" role="alert">
@@ -42,7 +45,7 @@
           <div class="card-header"><div><h2 class="card-title">基本信息</h2></div></div>
           <div class="card-content grid gap-4 sm:grid-cols-2">
             <label class="field">
-              <span class="label">站点名称</span>
+              <span class="label">站点名称（默认）</span>
               <input class="input" name="site_name" value="<%= values.site_name %>">
             </label>
             <label class="field">
@@ -50,9 +53,25 @@
               <input class="input" name="site_url" value="<%= values.site_url %>">
               <span class="field-hint">包含协议，结尾不要加斜杠。</span>
             </label>
+            <label class="field">
+              <span class="label">站点名称 · 简体中文</span>
+              <input class="input" name="site_name_zh_CN" value="<%= values.site_name_zh_CN %>" placeholder="<%= values.site_name %>">
+            </label>
+            <label class="field">
+              <span class="label">站点名称 · English</span>
+              <input class="input" name="site_name_en" value="<%= values.site_name_en %>" placeholder="<%= values.site_name %>">
+            </label>
             <label class="field sm:col-span-2">
-              <span class="label">站点描述</span>
+              <span class="label">站点描述（默认）</span>
               <input class="input" name="site_description" value="<%= values.site_description %>">
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">站点描述 · 简体中文</span>
+              <input class="input" name="site_description_zh_CN" value="<%= values.site_description_zh_CN %>" placeholder="<%= values.site_description %>">
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">站点描述 · English</span>
+              <input class="input" name="site_description_en" value="<%= values.site_description_en %>" placeholder="<%= values.site_description %>">
             </label>
             <label class="field sm:col-span-2">
               <span class="label">页脚版权与备案信息（支持 HTML）</span>
@@ -74,6 +93,8 @@
         <section class="card">
           <div class="card-header"><div><h2 class="card-title">注册与角色</h2></div></div>
           <div class="card-content grid gap-4 sm:grid-cols-2">
+            <label class="field"><span class="label">单角色模式</span><span class="select-wrap"><select class="select" name="single_player_limit"><option value="true" <%= singlePlayerMode?'selected':'' %>>开启 · 每人一个角色</option><option value="false" <%= !singlePlayerMode?'selected':'' %>>关闭 · 允许多个角色</option></select></span><span class="field-hint">兼容原 single-player-limit 插件开关；已有角色不自动删除。开启时优先限制为 1 个。</span></label>
+            <label class="field"><span class="label">每个用户的角色上限</span><input class="input" type="number" min="0" max="1000000" step="1" name="max_players_per_user" value="<%= values.max_players_per_user %>"><span class="field-hint">0 不设固定上限；创建角色仍受积分限制。多角色上限需同时关闭单角色模式。</span></label>
             <label class="field">
               <span class="label">角色名规则</span>
               <span class="select-wrap">
@@ -135,6 +156,7 @@
           <div class="card-header"><div><h2 class="card-title">积分经济</h2></div></div>
           <div class="card-content grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label class="field"><span class="label">创建角色消耗</span><input class="input" name="score_per_player" type="number" value="<%= values.score_per_player %>"></label>
+            <label class="field"><span class="label">首次正版验证奖励</span><input class="input" name="mojang_verification_score_award" type="number" min="0" max="2147483647" step="1" value="<%= values.mojang_verification_score_award %>"><span class="field-hint">仅在首次验证成功时发放，重复验证不重复奖励。</span></label>
             <label class="field"><span class="label">公开材质 / KB</span><input class="input" name="score_per_storage" type="number" value="<%= values.score_per_storage %>"></label>
             <label class="field"><span class="label">私有材质 / KB</span><input class="input" name="private_score_per_storage" type="number" value="<%= values.private_score_per_storage %>"></label>
             <label class="field"><span class="label">衣柜单件消耗</span><input class="input" name="score_per_closet_item" type="number" value="<%= values.score_per_closet_item %>"></label>

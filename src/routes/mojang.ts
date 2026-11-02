@@ -5,6 +5,7 @@ import { createOAuthFlow, readOAuthFlow } from '../services/oauth-client.js';
 import { getOptionInt } from '../services/option.js';
 import { query } from '../db.js';
 import { pageContext } from './page-context.js';
+import {singlePlayerLimitEnabled,countPlayersOfUser} from '../services/player.js';
 
 export async function registerMojangRoutes(app: FastifyInstance): Promise<void> {
   const render = async (request: FastifyRequest, reply: FastifyReply, error: string | null = null, status = 200) => {
@@ -18,6 +19,7 @@ export async function registerMojangRoutes(app: FastifyInstance): Promise<void> 
       verification, mappings, configured: settings.configured, configurationProblem: settings.problem,
       reward: Math.max(0, await getOptionInt('mojang_verification_score_award', 0)), error,
       completed: (request.query as any)?.completed === '1' && !!verification?.verified,
+      singlePlayerSync: await singlePlayerLimitEnabled() && await countPlayersOfUser(user.uid) === 1,
     });
   };
   const failure = async (request: FastifyRequest, reply: FastifyReply, error: unknown) => {

@@ -52,6 +52,6 @@ export async function pageContext(request: FastifyRequest, title: string): Promi
     faviconUrl: await getOption('favicon_url', '/favicon.ico'),
     recaptchaSiteKey: await getOption('recaptcha_sitekey',''),
     recaptchaInvisible:await getOptionBool('recaptcha_invisible',false),
-    t: (key: string) => (request as any).t(key),
+    t: (key: string, values?: Record<string, string | number>) => (request as any).t(key, values),
   };
 }

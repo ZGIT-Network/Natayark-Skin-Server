@@ -42,6 +42,19 @@ test('texture pages: upload pricing, closet prerequisite, applied state and erro
   try {
     const owner = await user('Owner'), viewer = await user('Viewer');
     const publicTexture = await texture(owner.uid, true), privateTexture = await texture(owner.uid, false);
+    await t.test('root favicon is a static asset rather than a legacy player name',async()=>{
+      const favicon=await app.inject('/favicon.ico');assert.equal(favicon.statusCode,200);assert.match(String(favicon.headers['content-type']),/^image\//);
+    });
+    await t.test('dashboard usage includes owned public and private uploads without exposing another account',async()=>{
+      const usage=await app.inject({url:'/user/usage',headers:{cookie:owner.cookie}});
+      assert.equal(usage.statusCode,200);assert.match(String(usage.headers['cache-control']),/no-store/);
+      assert.equal(usage.json().storage.used,publicTexture.size+privateTexture.size);
+      assert.equal(usage.json().players.used,1);
+      assert.equal((await app.inject('/user/usage')).statusCode,401);
+      assert.equal((await app.inject({url:'/user/usage?uid='+owner.uid,headers:{cookie:viewer.cookie}})).json().storage.used,0);
+      const dashboard=await app.inject({url:'/user',headers:{cookie:owner.cookie}});
+      assert.equal(dashboard.statusCode,200);assert.match(dashboard.body,/data-account-usage/);assert.match(dashboard.body,/data-usage-progress="storage"/);
+    });
     await t.test('language choice persists for accounts and guests across pages and old URLs',async()=>{
       const account=await user('Locale');
       const first=await app.inject({url:'/user/closet?keyword=Green&sort=time',headers:{cookie:account.cookie}});

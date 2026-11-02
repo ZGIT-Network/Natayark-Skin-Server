@@ -1,4 +1,4 @@
-<%- include('../partials/layout-user-top', { title: t('general.report-manage'), scope: 'admin', pageDescription: '审核用户提交的材质举报。' }) %>
+<%- include('../partials/layout-user-top', { title: t('general.report-manage'), scope: 'admin', pageDescription: t('admin.reports-description') }) %>
 
 <section class="card mb-4"><div class="card-header"><div><h2 class="card-title"><%= t('general.report-manage') %></h2><p class="card-description"><%= total %></p></div><%- include('../partials/admin-search',{searchPath:'/admin/reports',searchPlaceholder:t('search.reports'),searchExample:'status:0 report_at>=2026-01-01 sort:-id'}) %></div></section>
 

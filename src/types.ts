@@ -10,6 +10,6 @@ declare module 'fastify' {
     checkCsrf(token?: string): boolean;
     setSession(uid: number,remember?:boolean): Promise<void>;
     clearSession(): Promise<void>;
-    t(key: string): string;
+    t(key: string, values?: Record<string, string | number>): string;
   }
 }

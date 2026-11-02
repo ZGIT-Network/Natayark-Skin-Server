@@ -23,9 +23,6 @@
     <a href="/admin" class="dropdown-item" data-dropdown-item role="menuitem"><%- icon('layout-dashboard') %><span><%= t('general.admin-panel') %></span></a>
     <% } %>
     <div class="dropdown-separator"></div>
-    <form method="post" action="/auth/logout">
-      <input type="hidden" name="csrf" value="<%= csrf %>">
-      <button type="submit" class="dropdown-item danger" role="menuitem"><%- icon('log-out') %><span><%= t('general.logout') %></span></button>
-    </form>
+    <a href="/auth/logout" class="dropdown-item danger" data-dropdown-item role="menuitem" data-native-navigation data-logout-confirm data-confirm-title="<%= t('auth.logout') %>" data-confirm="<%= t('auth.logout-confirm') %>" data-confirm-text="<%= t('auth.logout') %>" data-cancel-text="<%= t('auth.cancel') %>"><%- icon('log-out') %><span><%= t('general.logout') %></span></a>
   </div>
 </div>

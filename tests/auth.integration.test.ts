@@ -244,18 +244,61 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       assert.ok(checkUserPassword((await queryOne<any>('SELECT * FROM users WHERE email=?',[oauthEmail]))!,'Mailbox-password-123'));
       assert.equal((await anonymous.request('/auth/verify-email?token=' + mailToken)).statusCode, 400);
     });
-    await t.test('passwordless legacy OAuth account migrates by mailbox proof with registration and password login disabled',async()=>{
+    await t.test('passwordless legacy OAuth account links only with a verified provider email',async()=>{
       const email='auth-legacy-'+suffix+'@example.test';userEmails.push(email);
-      const created=await registerUser({email,nickname:'Legacy',player_name:'Old'+suffix,verified:true});assert.ok(created.ok);
+      const created=await registerUser({email,nickname:'Legacy',player_name:'Old'+suffix,verified:false});assert.ok(created.ok);
       const original=await queryOne<any>('SELECT * FROM users WHERE uid=?',[created.user.uid]);assert.equal(original.password,'');
       const players=await query('SELECT * FROM players WHERE uid=?',[created.user.uid]);
       const uuids=await query('SELECT * FROM `uuid` WHERE name=?',['Old'+suffix]);
       await setOption('plugins_enabled',JSON.stringify([{name:'disable-registration',version:'fixture'}]));await setOption('local_login_enabled','false');
       try{
-        remote={id:'legacy-subject-'+suffix,username:'Legacy remote',email,email_verified:false};
+        remote={id:'legacy-subject-'+suffix,username:'Legacy remote',email,email_verified:true};
+        const mailCount=capturedMail.length;
         const client=browser(),authorization=await begin(client);
         const callback=await client.request('/auth/login/auth-test/callback?code=old&state='+authorization.state);
-        assert.match(String(callback.headers.location),/oauth\/migrate/);
+        assert.equal(callback.statusCode,302,callback.body);
+        assert.equal(callback.headers.location,'/user','Passwordless legacy accounts link directly');
+        assert.equal(capturedMail.length,mailCount,'No mailbox challenge is sent');
+        assert.equal((await client.request('/api/user')).json().uid,created.user.uid);
+        assert.equal((await queryOne<any>('SELECT user_id FROM mcn_oauth_identities WHERE provider=? AND subject=?',[provider.key,remote.id]))?.user_id,created.user.uid);
+        assert.equal((await queryOne<any>('SELECT verified FROM users WHERE uid=?',[created.user.uid]))?.verified,1);
+        assert.deepEqual(await query('SELECT * FROM players WHERE uid=?',[created.user.uid]),players);
+        assert.deepEqual(await query('SELECT * FROM `uuid` WHERE name=?',['Old'+suffix]),uuids);
+        remote={...remote,email:'changed-provider-email@example.test'};
+        const again=browser(),next=await begin(again);
+        assert.equal((await again.request('/auth/login/auth-test/callback?code=again&state='+next.state)).headers.location,'/user');
+        assert.equal((await again.request('/api/user')).json().uid,created.user.uid,'Subsequent login uses stable subject and ignores changed email');
+      }finally{await setOption('plugins_enabled',originalPlugins);await setOption('local_login_enabled','true');}
+    });
+    await t.test('an unverified email cannot sign into or verify a passwordless legacy account',async()=>{
+      const email='auth-legacy-unverified-'+suffix+'@example.test';userEmails.push(email);
+      const created=await registerUser({email,nickname:'Unverified legacy',verified:false});assert.ok(created.ok);
+      const original=await queryOne<any>('SELECT * FROM users WHERE uid=?',[created.user.uid]);assert.equal(original.password,'');
+      remote={id:'unverified-legacy-subject-'+suffix,username:'Unverified remote',email,email_verified:false};
+      const client=browser(),authorization=await begin(client);
+      const callback=await client.request('/auth/login/auth-test/callback?code=unverified&state='+authorization.state);
+      assert.match(String(callback.headers.location),/oauth\/migrate/);
+      assert.equal((await client.request('/user')).statusCode,302);
+      assert.equal(await queryOne('SELECT user_id FROM mcn_oauth_identities WHERE provider=? AND subject=?',[provider.key,remote.id]),null);
+      assert.deepEqual(await queryOne('SELECT * FROM users WHERE uid=?',[created.user.uid]),original);
+      const path=String(callback.headers.location),flow=new URL(path,'http://local').searchParams.get('flow')!,csrf=await client.csrf(path);
+      const sent=await client.request('/auth/oauth/migrate',{csrf,flow,method:'email'});
+      assert.match(sent.body,/验证邮件已发送/);
+      const linked=await client.request('/auth/verify-email?token='+lastMailToken());
+      assert.equal(linked.headers.location,'/user');
+      assert.equal((await client.request('/api/user')).json().uid,created.user.uid);
+      assert.equal((await queryOne<any>('SELECT verified FROM users WHERE uid=?',[created.user.uid]))?.verified,1);
+    });
+    await t.test('legacy account with a local password requires mailbox proof for a new identity',async()=>{
+      const email='auth-legacy-mail-'+suffix+'@example.test';userEmails.push(email);
+      const created=await registerUser({email,nickname:'Legacy mail',player_name:'Ml'+suffix,password:'legacy-mail-password',verified:true});assert.ok(created.ok);
+      const original=await queryOne<any>('SELECT * FROM users WHERE uid=?',[created.user.uid]);
+      await setOption('plugins_enabled',JSON.stringify([{name:'disable-registration',version:'fixture'}]));await setOption('local_login_enabled','false');
+      try{
+        remote={id:'legacy-mail-subject-'+suffix,username:'Legacy remote',email,email_verified:false};
+        const client=browser(),authorization=await begin(client);
+        const callback=await client.request('/auth/login/auth-test/callback?code=old&state='+authorization.state);
+        assert.match(String(callback.headers.location),/oauth\/migrate/,'Accounts with a password need explicit proof');
         const path=String(callback.headers.location),flow=new URL(path,'http://local').searchParams.get('flow')!,csrf=await client.csrf(path);
         assert.equal((await browser().request(path)).statusCode,400,'Legacy pending link binds its initiating browser');
         assert.equal((await client.request('/auth/oauth/migrate',{flow,method:'email'})).statusCode,403);
@@ -268,13 +311,8 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
         const linked=await client.request('/auth/verify-email?token='+token);assert.equal(linked.statusCode,302);assert.equal(linked.headers.location,'/user');
         assert.equal((await client.request('/api/user')).json().uid,created.user.uid);
         assert.deepEqual(await queryOne('SELECT * FROM users WHERE uid=?',[created.user.uid]),original);
-        assert.deepEqual(await query('SELECT * FROM players WHERE uid=?',[created.user.uid]),players);
-        assert.deepEqual(await query('SELECT * FROM `uuid` WHERE name=?',['Old'+suffix]),uuids);
+        assert.equal((await queryOne<any>('SELECT user_id FROM mcn_oauth_identities WHERE provider=? AND subject=?',[provider.key,remote.id]))?.user_id,created.user.uid);
         assert.equal((await client.request('/auth/verify-email?token='+token)).statusCode,400);
-        remote={...remote,email:'changed-provider-email@example.test'};
-        const again=browser(),next=await begin(again);
-        assert.equal((await again.request('/auth/login/auth-test/callback?code=again&state='+next.state)).headers.location,'/user');
-        assert.equal((await again.request('/api/user')).json().uid,created.user.uid,'Subsequent login uses stable subject and ignores changed email');
       }finally{await setOption('plugins_enabled',originalPlugins);await setOption('local_login_enabled','true');}
     });
     await t.test('legacy migration accepts the correct original password without changing the account',async()=>{

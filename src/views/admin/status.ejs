@@ -1,6 +1,30 @@
-<%- include('../partials/layout-user-top', { title:'系统状态', scope:'admin', pageDescription:'查看应用运行环境和服务状态。' }) %>
-<div class="grid gap-5 lg:grid-cols-2"><section class="card"><div class="card-header"><h2 class="card-title">应用环境</h2></div><dl class="rule-list"><div><dt>系统</dt><dd>Natayark SkinServer</dd></div><div><dt><%= t('status.application-version') %></dt><dd><code data-app-version><%= runtime.version %></code></dd></div><div><dt>Node.js</dt><dd><%= runtime.node %></dd></div><div><dt>操作系统</dt><dd><%= runtime.platform %></dd></div><div><dt>本次运行</dt><dd><%= runtime.uptime %> 分钟</dd></div><div><dt>数据库</dt><dd>MySQL <%= runtime.database %></dd></div></dl></section>
-<section class="card"><div class="card-header"><h2 class="card-title">服务检查</h2></div><dl class="rule-list"><div><dt>数据库连接</dt><dd><span class="badge badge-success">正常</span></dd></div><div><dt>材质目录读写</dt><dd><span class="badge <%= runtime.textureWritable ? 'badge-success' : 'badge-warning' %>"><%= runtime.textureWritable ? '正常' : '需要检查目录权限' %></span></dd></div><div><dt>邮件服务</dt><dd><span class="badge badge-outline"><%= mailConfigured ? '已配置' : '未配置' %></span></dd></div><div><dt>Yggdrasil Connect</dt><dd><a class="text-brand hover:underline" href="/.well-known/openid-configuration" target="_blank" rel="noopener">内置服务 · 查看发现文档</a></dd></div></dl><p class="rule-note">邮件状态表示配置是否齐全，实际投递结果取决于 SMTP 服务。</p></section></div>
+<%- include('../partials/layout-user-top', { title:t('admin.status'), scope:'admin', pageDescription:t('admin.status-description') }) %>
+<%
+  const size = bytes => { const units=['B','KiB','MiB','GiB','TiB']; let value=Number(bytes),unit=0; while(value>=1024&&unit<units.length-1){value/=1024;unit++;} return new Intl.NumberFormat(locale==='en'?'en-US':'zh-CN',{maximumFractionDigits:1}).format(value)+' '+units[unit]; };
+  const date = value => new Intl.DateTimeFormat(locale==='en'?'en-GB':'zh-CN',{dateStyle:'short',timeStyle:'medium',timeZone:runtime.timezone}).format(new Date(value));
+  const elapsed = t('status.duration',{days:Math.floor(runtime.uptime/86400),hours:Math.floor(runtime.uptime/3600)%24,minutes:Math.floor(runtime.uptime/60)%60,seconds:runtime.uptime%60});
+  const groups=[
+    ['status.environment',[
+      ['status.application-version',runtime.version],['Node.js',runtime.node],['Fastify',runtime.fastify],['V8',runtime.v8],['status.os',runtime.platform],['status.cpu',runtime.cpuModel],['status.cores',runtime.cpuCores],['status.mode',runtime.mode],['status.timezone',runtime.timezone],
+    ]],
+    ['status.process',[
+      ['PID',runtime.pid],['status.started',date(runtime.startedAt)],['status.uptime',elapsed],['status.rss',size(runtime.memory.rss)],['status.heap',size(runtime.memory.heapUsed)+' / '+size(runtime.memory.heapTotal)],['status.external',size(runtime.memory.external)],['status.host-memory',size(runtime.memory.hostFree)+' / '+size(runtime.memory.hostTotal)],['status.cpu-time',runtime.cpu.userSeconds+'s / '+runtime.cpu.systemSeconds+'s'],['status.event-loop',runtime.eventLoopPercent+'%'],
+    ]],
+    ['status.database',[
+      ['status.db-version',runtime.database.version],['status.db-name',runtime.database.name],['status.db-latency',runtime.database.latency+' ms'],['status.db-charset',runtime.database.charset+' / '+runtime.database.collation],['status.db-tables',runtime.database.tables],['status.db-size',size(runtime.database.bytes)],['status.db-connections',runtime.database.maxConnections],['status.db-prefix',runtime.database.prefix||'—'],
+    ]],
+    ['status.storage',[
+      ['status.texture-count',runtime.summary.textures],['status.texture-size',size(runtime.summary.storage*1024)],['status.disk-free',runtime.disk?size(runtime.disk.available)+' / '+size(runtime.disk.total):t('status.unavailable')],['status.texture-path',runtime.textureDir],['status.texture-access',t('status.'+runtime.textureState)],['status.users',runtime.summary.users],['status.players',runtime.summary.players],
+    ]],
+  ];
+%>
+<div class="status-snapshot"><p><%= t('status.sampled') %> <time datetime="<%= runtime.sampledAt %>"><%= date(runtime.sampledAt) %></time></p><a href="/admin/status" class="btn btn-outline btn-sm"><%- icon('refresh-cw') %><%= t('status.refresh') %></a></div>
+<div class="grid gap-5 xl:grid-cols-2">
+  <% for (const [heading,rows] of groups) { %>
+  <section class="card" data-status-section="<%= heading %>"><div class="card-header"><h2 class="card-title"><%= t(heading) %></h2></div><dl class="rule-list status-list"><% for (const [label,value] of rows) { %><div><dt><%= t(label) %></dt><dd><% if(label==='status.application-version'){ %><code data-app-version><%= value %></code><% }else{ %><%= value %><% } %></dd></div><% } %></dl></section>
+  <% } %>
+  <section class="card xl:col-span-2"><div class="card-header"><h2 class="card-title"><%= t('status.services') %></h2></div><dl class="rule-list status-list"><div><dt><%= t('status.mail') %></dt><dd><%= t(mailConfigured?'status.configured':'status.not-configured') %></dd></div><div><dt><%= t('status.oauth-count') %></dt><dd><%= runtime.providerCount %></dd></div><div><dt><%= t('general.verification') %></dt><dd><%= t(runtime.microsoftConfigured?'status.configured':'status.not-configured') %></dd></div><div><dt>Yggdrasil Connect</dt><dd><a class="text-brand hover:underline" href="/.well-known/openid-configuration" target="_blank" rel="noopener"><%= t('status.discovery') %></a></dd></div></dl><p class="rule-note"><%= t('status.measurement-note') %></p></section>
+</div>
 <section class="card mt-5" data-update-check aria-labelledby="updates-title">
   <div class="card-header flex-wrap gap-4">
     <div>

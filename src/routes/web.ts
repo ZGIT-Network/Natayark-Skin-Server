@@ -5,7 +5,7 @@ import {requestLocale,saveLocale,localeReturnTo} from '../services/locale.js';
 import type { FastifyInstance } from 'fastify';
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
-import { exec, nowString, queryOne } from '../db.js';
+import { exec, nowString, queryOne,withTransaction } from '../db.js';
 import {
   findUserByEmail,
   registerUser,
@@ -15,9 +15,9 @@ import {
   isAdmin,
   PERMISSION_BANNED,
 } from '../services/user.js';
-import { addPlayer, renamePlayer, deletePlayer, listPlayersOfUser, countPlayersOfUser, findPlayerByName } from '../services/player.js';
+import { addPlayer, renamePlayer, deletePlayer, listPlayersOfUser, countPlayersOfUser, findPlayerByName,singlePlayerLimitEnabled } from '../services/player.js';
 import { closetOf, closetAdd, closetRemove, closetRename, findTextureByTid, uploadTexture, skinlibSearch, getDescription, setDescription, deleteTexture } from '../services/texture.js';
-import { getOption, getOptionBool, getOptionInt, getOptionLocalized, setOption } from '../services/option.js';
+import { getOption, getOptionBool, getOptionInt, getOptionLocalized, setOption,loadOptions } from '../services/option.js';
 import { hashPassword, needsRehash } from '../services/cipher.js';
 import { loadProviders, identitiesOf, type OAuthProviderConfig } from '../services/oauth-client.js';
 import { verifyOauthState, oauthState, csrfToken } from '../services/session.js';
@@ -30,8 +30,9 @@ import { sendMail, mailConfigured } from '../services/mail.js';
 import { appearanceSettings, HOME_LAYOUTS, PALETTES, RADIUS_PRESETS, isHomeLayout, parseAppearance, saveAppearance, themeContext } from '../services/theme.js';
 import { pageNumber, siteChart, siteSummary } from '../services/site-data.js';
 import { descriptionLimit, renderMarkdown } from '../services/content.js';
-import { pluginEnabled } from '../services/plugins.js';
+import { pluginEnabled,setPluginEnabled,configurePlugin } from '../services/plugins.js';
 import {compileSearch,SearchError} from '../services/search.js';
+import {accountUsage} from '../services/usage.js';
 
 /**
  * Server-rendered pages: home, auth, user center, skinlib, admin.
@@ -66,7 +67,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       faviconUrl: await getOption('favicon_url', '/favicon.ico'),
       recaptchaSiteKey: await getOption('recaptcha_sitekey',''),
       recaptchaInvisible:await getOptionBool('recaptcha_invisible',false),
-      t: (key: string) => request.t(key),
+      t: (key: string, values?: Record<string, string | number>) => request.t(key, values),
     };
   };
 
@@ -128,6 +129,11 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // --- User center ---------------------------------------------------------------
+  app.get('/user/usage', async (request, reply) => {
+    reply.header('Cache-Control','private, no-store');
+    if (!request.currentUser) return reply.code(401).send({code:1,message:'请先登录'});
+    return accountUsage(request.currentUser.uid);
+  });
   app.get('/user', async (request, reply) => {
     if (!request.currentUser) return reply.redirect('/auth/login?redirect=/user');
     const base = await view(request);
@@ -149,7 +155,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const canSign = !signedToday(user!.last_sign_at);
     const hasPassword = !!user!.password;
     const [verification,verificationSettings,verificationReward]=await Promise.all([verificationOf(user!.uid),mojangConfiguration(),getOptionInt('mojang_verification_score_award',0)]);
-    return reply.view('user/index', { ...base, players: playerData, canSign, hasPassword,
+    return reply.view('user/index', { ...base, players: playerData, canSign, hasPassword, usage:await accountUsage(uid),
       launcherApiRoot:(config.publicOrigin||base.siteUrl||`${request.protocol}://${request.headers.host}`).replace(/\/+$/,'')+'/api/yggdrasil',
       minecraftVerified:!!verification?.verified,minecraftVerificationConfigured:verificationSettings.configured,minecraftVerificationReward:Math.max(0,verificationReward),
       scoreRuleMin: (await getOption('sign_score', '10,100')).split(',')[0], scoreRuleMax: (await getOption('sign_score', '10,100')).split(',')[1] ?? (await getOption('sign_score', '10,100')).split(',')[0] });
@@ -185,7 +191,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const uid = request.currentUser.uid;
     const action = body.action;
     if (action === 'nickname') {
-      if ((await getOption('plugins_enabled', '')).includes('single-player-limit')) return reply.code(403).view('user/profile', { ...(await view(request)), error: '单角色模式下，昵称随角色名同步修改', providers: await loadProviders() });
+      if (await singlePlayerLimitEnabled()) return reply.code(403).view('user/profile', { ...(await view(request)), error: '单角色模式下，昵称随角色名同步修改', providers: await loadProviders() });
       const nickname = String(body.nickname ?? '').trim().slice(0, 50);
       await exec('UPDATE users SET nickname = ? WHERE uid = ?', [nickname || request.currentUser.email.split('@')[0], uid]);
     } else if (action === 'password') {
@@ -242,7 +248,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       }))
     );
     const playerPreviews = await Promise.all(playerData.map(async p => ({ ...p, capeHash: p.capeTid ? (await findTextureByTid(p.capeTid))?.hash ?? null : null })));
-    return reply.view('user/players', { ...base, players: playerPreviews, closet, scorePerPlayer: await getOption('score_per_player', '100') });
+    return reply.view('user/players', { ...base, players: playerPreviews, closet,usage:await accountUsage(base.user!.uid), scorePerPlayer: await getOption('score_per_player', '100') });
   });
 
   app.get('/user/closet', async (request, reply) => {
@@ -466,10 +472,10 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     if (!requireAdmin(request, reply)) return;
     const base = await view(request);
     const keys = [
-      'site_name', 'site_url', 'site_description', 'announcement', 'copyright_text',
+      'site_name', 'site_name_zh_CN', 'site_name_en', 'site_url', 'site_description', 'site_description_zh_CN', 'site_description_en', 'announcement', 'announcement_zh_CN', 'announcement_en', 'copyright_text',
       'player_name_rule', 'player_name_length_min', 'player_name_length_max', 'custom_player_name_regexp',
       'register_with_player_name', 'local_login_enabled', 'regs_per_ip', 'require_verification', 'user_initial_score','recaptcha_sitekey','recaptcha_invisible',
-      'score_per_player', 'score_per_storage', 'private_score_per_storage', 'score_per_closet_item',
+      'score_per_player', 'max_players_per_user','mojang_verification_score_award','score_per_storage', 'private_score_per_storage', 'score_per_closet_item',
       'score_award_per_texture', 'take_back_scores_after_deletion', 'status_code_for_private', 'return_score', 'score_award_per_like', 'reporter_score_modification', 'reporter_reward_score', 'sign_after_zero', 'content_policy',
       'allow_downloading_texture', 'max_upload_file_size', 'sign_score', 'sign_gap_time', 'textures_description_limit',
       'ygg_uuid_algorithm', 'ygg_token_expire_1', 'ygg_token_expire_2', 'ygg_tokens_limit',
@@ -479,7 +485,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const values: Record<string, string> = {};
     for (const key of keys) values[key] = (await getOption(key)) ?? '';
     return reply.view('admin/settings', {
-      ...base, values,
+      ...base, values,singlePlayerMode:await singlePlayerLimitEnabled(),
       saved: (request.query as any)?.saved === '1',
       error: String((request.query as any)?.error ?? ''),
       providers: await loadProviders(),
@@ -527,8 +533,15 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       }
       return reply.redirect('/admin/settings?saved=1#oauth');
     }
-    const allowed = new Set(['site_name','site_url','site_description','announcement','copyright_text','player_name_rule','player_name_length_min','player_name_length_max','custom_player_name_regexp','register_with_player_name','local_login_enabled','regs_per_ip','require_verification','user_initial_score','score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','reporter_score_modification','reporter_reward_score','return_score','take_back_scores_after_deletion','status_code_for_private','allow_downloading_texture','max_upload_file_size','sign_score','sign_gap_time','sign_after_zero','ygg_uuid_algorithm','ygg_token_expire_1','ygg_token_expire_2','ygg_tokens_limit','ygg_search_profile_max','ygg_skin_domain','ygg_disable_authserver','ygg_shared_client_id','yggc_device_code_expire','content_policy']);
+    const allowed = new Set(['site_name','site_name_zh_CN','site_name_en','site_url','site_description','site_description_zh_CN','site_description_en','announcement','announcement_zh_CN','announcement_en','copyright_text','player_name_rule','player_name_length_min','player_name_length_max','custom_player_name_regexp','register_with_player_name','local_login_enabled','regs_per_ip','require_verification','user_initial_score','score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','reporter_score_modification','reporter_reward_score','return_score','take_back_scores_after_deletion','status_code_for_private','allow_downloading_texture','max_upload_file_size','sign_score','sign_gap_time','sign_after_zero','ygg_uuid_algorithm','ygg_token_expire_1','ygg_token_expire_2','ygg_tokens_limit','ygg_search_profile_max','ygg_skin_domain','ygg_disable_authserver','ygg_shared_client_id','yggc_device_code_expire','content_policy']);
     allowed.add('textures_description_limit');
+    allowed.add('max_players_per_user');allowed.add('mojang_verification_score_award');
+    if(body.max_players_per_user!==undefined&&(!/^\d{1,7}$/.test(body.max_players_per_user)||Number(body.max_players_per_user)>1000000))return reply.redirect('/admin/settings?error=player-limit#register');
+    if(body.mojang_verification_score_award!==undefined&&(!/^\d{1,10}$/.test(body.mojang_verification_score_award)||Number(body.mojang_verification_score_award)>2147483647))return reply.redirect('/admin/settings?error=verification-reward#score');
+    if(body.single_player_limit!==undefined){
+      if(!['true','false'].includes(body.single_player_limit))return reply.redirect('/admin/settings?error=player-limit#register');
+      try{configurePlugin(await getOption('plugins_enabled','[]'),'single-player-limit',body.single_player_limit==='true');}catch{return reply.redirect('/admin/settings?error=plugins-invalid#register');}
+    }
     if (body.textures_description_limit !== undefined && (!/^\d+$/.test(body.textures_description_limit) || Number(body.textures_description_limit) > 65535)) return reply.redirect('/admin/settings?error=description-limit');
     const localLoginNext = body.local_login_enabled === undefined
       ? await getOptionBool('local_login_enabled', true)
@@ -544,9 +557,10 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       const invisible=body.recaptcha_invisible===undefined?await getOptionBool('recaptcha_invisible',false):['true','1'].includes(String(body.recaptcha_invisible));
       await setOption('recaptcha_invisible',sitekey&&invisible?'true':'false');
     }
-    for (const key of editable) {
-      await setOption(key, key === 'local_login_enabled' ? (localLoginNext ? 'true' : 'false') : String(body[key] ?? ''));
-    }
+    try{await withTransaction(async()=>{
+      for (const key of editable) await setOption(key, key === 'local_login_enabled' ? (localLoginNext ? 'true' : 'false') : String(body[key] ?? ''));
+      if(body.single_player_limit!==undefined)await setPluginEnabled('single-player-limit',body.single_player_limit==='true');
+    });}catch(error){await loadOptions(true);throw error;}
     return reply.redirect('/admin/settings?saved=1');
   });
 
@@ -570,7 +584,7 @@ function requireAdmin(request: any, reply: any): boolean {
     return false;
   }
   if (request.currentUser.permission < 1) {
-    reply.code(403).view('error', { title: '错误', code: 403, message: '需要管理员权限。' });
+    reply.redirect('/user?notice=permission-denied');
     return false;
   }
   return true;

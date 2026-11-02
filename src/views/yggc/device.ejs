@@ -1,8 +1,8 @@
 <%- include('../partials/layout-standalone-top', { brand: 'Yggdrasil Connect' }) %>
 
 <div class="mb-5">
-  <h1 class="text-lg font-semibold tracking-tight">设备授权</h1>
-  <p class="mt-1 text-sm text-muted-foreground">输入启动器显示的代码以完成登录。</p>
+  <h1 class="text-lg font-semibold tracking-tight"><%= t('device.title') %></h1>
+  <p class="mt-1 text-sm text-muted-foreground"><%= t('device.help') %></p>
 </div>
 
 <% if (error) { %>
@@ -15,15 +15,15 @@
 <form method="post" action="/connect/device/link" class="grid gap-4">
   <input type="hidden" name="csrf" value="<%= csrf %>">
   <label class="field">
-    <span class="label">用户代码</span>
+    <span class="label"><%= t('device.code') %></span>
     <input class="input h-12 text-center font-mono text-xl tracking-[0.3em] uppercase" id="user_code" name="user_code"
            value="<%= userCode %>" placeholder="XXXX-XXXX" maxlength="9" required autofocus>
   </label>
-  <button class="btn btn-primary btn-lg w-full" type="submit">继续</button>
+  <button class="btn btn-primary btn-lg w-full" type="submit"><%= t('device.continue') %></button>
 </form>
 
 <% if (!loggedIn) { %>
-<p class="mt-4 text-center text-xs text-muted-foreground">提交后将引导你登录皮肤站账号。</p>
+<p class="mt-4 text-center text-xs text-muted-foreground"><%= t('device.login-hint') %></p>
 <% } %>
 
 <%- include('../partials/layout-standalone-bottom') %>

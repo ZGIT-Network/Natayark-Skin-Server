@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { query, queryOne, exec, insert, nowString, withTransaction } from '../db.js';
 import { getOption, getOptionInt } from './option.js';
 import { revokeAllTokensForUser } from './token.js';
-import { singlePlayerLimitEnabled } from './player.js';
+import { singlePlayerLimitEnabled, playerLimit, countPlayersOfUser, renamePlayer, type Player } from './player.js';
 import { normalizeUuid } from './uuid.js';
 
 export type MinecraftIdentity = { uuid: string; name: string };
@@ -88,25 +88,28 @@ export async function bindMinecraftIdentity(userId: number, identity: MinecraftI
     if (!user || user.permission === -1) throw new MojangVerificationError('account_unavailable', '当前账户不可用。', 403);
     const previous = await queryOne<VerificationRow>('SELECT user_id,uuid,verified FROM mojang_verifications WHERE user_id=? FOR UPDATE', [userId]);
     if (previous?.verified) {
-      if (normalizeUuid(previous.uuid) === normalized) return { alreadyVerified: true, reward: 0, uuidSynced: !!await queryOne('SELECT id FROM `uuid` WHERE uuid=?', [normalized]) };
+      if (normalizeUuid(previous.uuid) === normalized) return { alreadyVerified: true, reward: 0, uuidSynced: !!await queryOne('SELECT u.id FROM `uuid` u JOIN players p ON p.name=u.name WHERE u.uuid=? AND p.uid=?', [normalized,userId]) };
       throw new MojangVerificationError('already_bound', '此皮肤站账户已绑定其他正版账户。', 409);
     }
     const occupied = await queryOne<VerificationRow>('SELECT user_id,uuid,verified FROM mojang_verifications WHERE uuid=? FOR UPDATE', [normalized]);
     if (occupied && occupied.user_id !== userId) throw new MojangVerificationError('uuid_conflict', '此正版账户已经绑定其他皮肤站账户。', 409);
     const player = await queryOne<{ pid: number; uid: number; name: string }>('SELECT pid,uid,name FROM players WHERE name=? FOR UPDATE', [identity.name]);
     if (player && player.uid !== userId) throw new MojangVerificationError('player_conflict', '此角色名称已被其他皮肤站账户使用，请联系管理员处理归属。', 409);
-    if (!player && await singlePlayerLimitEnabled() && await queryOne('SELECT pid FROM players WHERE uid=? LIMIT 1 FOR UPDATE', [userId])) throw new MojangVerificationError('player_limit', '单角色模式下，请先处理当前角色，再绑定正版角色。', 409);
+    const singlePlayer = await singlePlayerLimitEnabled();
+    const cap=await playerLimit();
+    const retainedPlayer = !player && cap!==null && await countPlayersOfUser(userId)>=cap ? await queryOne('SELECT pid FROM players WHERE uid=? LIMIT 1 FOR UPDATE', [userId]) : null;
     const duplicate = await queryOne<{ name: string }>('SELECT name FROM `uuid` WHERE uuid=? AND name<>? LIMIT 1 FOR UPDATE', [normalized, identity.name]);
     if (duplicate) throw new MojangVerificationError('uuid_conflict', '此正版 UUID 已关联其他角色，请联系管理员核对。', 409);
-    if (!player) await exec('INSERT INTO players (uid,name,tid_skin,tid_cape,last_modified) VALUES (?,?,0,0,?)', [userId, identity.name, nowString()]);
+    // Verifying ownership need not create another player or change an existing one.
+    if (!player && !retainedPlayer) await exec('INSERT INTO players (uid,name,tid_skin,tid_cape,last_modified) VALUES (?,?,0,0,?)', [userId, identity.name, nowString()]);
     const mapping = await queryOne<{ uuid: string }>('SELECT uuid FROM `uuid` WHERE name=? ORDER BY id ASC LIMIT 1 FOR UPDATE', [identity.name]);
-    if (!mapping) await exec('INSERT INTO `uuid` (name,uuid) VALUES (?,?)', [identity.name, normalized]);
+    if (!mapping && !retainedPlayer) await exec('INSERT INTO `uuid` (name,uuid) VALUES (?,?)', [identity.name, normalized]);
     if (previous) await exec('UPDATE mojang_verifications SET uuid=?,verified=1,updated_at=? WHERE user_id=?', [normalized, nowString(), userId]);
     else await exec('INSERT INTO mojang_verifications (user_id,uuid,verified,created_at,updated_at) VALUES (?,?,1,?,?)', [userId, normalized, nowString(), nowString()]);
     const reward = Math.max(0, await getOptionInt('mojang_verification_score_award', 0));
     if (reward) await exec('UPDATE users SET score=score+? WHERE uid=?', [reward, userId]);
-    if (await singlePlayerLimitEnabled()) await exec('UPDATE users SET nickname=? WHERE uid=?', [identity.name, userId]);
-    return { alreadyVerified: false, reward, uuidSynced: !mapping || normalizeUuid(mapping.uuid) === normalized };
+    if (singlePlayer && !retainedPlayer) await exec('UPDATE users SET nickname=? WHERE uid=?', [identity.name, userId]);
+    return { alreadyVerified: false, reward, uuidSynced: !retainedPlayer && (!mapping || normalizeUuid(mapping.uuid) === normalized) };
   }).catch((error) => {
     if (['ER_DUP_ENTRY', 'ER_LOCK_DEADLOCK'].includes((error as any)?.code)) throw new MojangVerificationError('binding_conflict', '角色或正版账户的绑定信息发生冲突，请刷新后重新验证。', 409);
     throw error;
@@ -125,7 +128,15 @@ export async function synchronizeVerifiedUuid(userId: number, fetcher: typeof fe
     try { response = await fetcher(`https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`, { redirect: 'error', signal: AbortSignal.timeout(10_000) }); } catch { throw new MojangVerificationError('upstream_unavailable', '暂时无法查询正版角色，请稍后重试。', 502); }
     const profile: any = response.ok ? await response.json() : null;
     if (!profile || normalizeUuid(String(profile.id ?? '')) !== uuid || !/^[A-Za-z0-9_]{1,16}$/.test(profile.name ?? '')) throw new MojangVerificationError('profile_unavailable', '正版角色信息暂时不可用，请稍后重试。', 502);
-    const player = await queryOne<{ pid: number; uid: number }>('SELECT pid,uid FROM players WHERE name=? FOR UPDATE', [profile.name]);
+    let player = await queryOne<{ pid: number; uid: number }>('SELECT pid,uid FROM players WHERE name=? FOR UPDATE', [profile.name]);
+    if (!player && await singlePlayerLimitEnabled()) {
+      const owned = await query<Player>('SELECT * FROM players WHERE uid=? ORDER BY pid FOR UPDATE',[userId]);
+      if (owned.length === 1) {
+        const renamed = await renamePlayer(owned[0],profile.name);
+        if (!renamed.ok) throw new MojangVerificationError('player_conflict','当前角色无法更名为正版角色，请检查名称归属或联系管理员。',409);
+        player = owned[0];
+      } else if (owned.length > 1) throw new MojangVerificationError('player_conflict','账户中有多个历史角色，请先在角色管理中确认需要同步的角色名称。',409);
+    }
     if (!player || player.uid !== userId) throw new MojangVerificationError('player_conflict', '只有本人名下、与正版名称一致的角色才能同步 UUID。', 409);
     const conflict = await queryOne('SELECT id FROM `uuid` WHERE uuid=? AND name<>? LIMIT 1 FOR UPDATE', [uuid, profile.name]);
     if (conflict) throw new MojangVerificationError('uuid_conflict', '此 UUID 已关联其他角色，请联系管理员核对。', 409);

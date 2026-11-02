@@ -1,4 +1,4 @@
-<%- include('../partials/layout-auth-top', { authTitle: '完成注册', authSubtitle: '设置用户名和密码，用于本站账户与启动器登录。' }) %>
+<%- include('../partials/layout-auth-top', { authTitle: t('auth.complete-title'), authSubtitle: t('auth.complete-subtitle') }) %>
 
 <% if (error) { %>
 <div class="alert alert-destructive mb-4" role="alert">
@@ -22,21 +22,21 @@
   </label>
   <% if (registerWithPlayerName) { %>
   <label class="field">
-    <span class="label">用户名 / Minecraft 角色名</span>
+    <span class="label"><%= t('auth.username-player') %></span>
     <input type="text" class="input" name="player_name" value="<%= playerName %>" required autocomplete="username">
-    <span class="field-hint">启动器可以使用角色名或邮箱登录。</span>
+    <span class="field-hint"><%= t('auth.username-player-help') %></span>
   </label>
   <% } else { %>
   <label class="field">
-    <span class="label">用户名（显示名称）</span>
+    <span class="label"><%= t('auth.username-display') %></span>
     <input type="text" class="input" name="nickname" value="<%= nickname %>" required maxlength="50" autocomplete="nickname">
-    <span class="field-hint">启动器使用邮箱登录，注册后可在角色管理中创建游戏角色。</span>
+    <span class="field-hint"><%= t('auth.username-display-help') %></span>
   </label>
   <% } %>
   <label class="field">
     <span class="label"><%= t('auth.password') %></span>
     <input type="password" class="input" name="password" required minlength="8" autocomplete="new-password">
-    <span class="field-hint">至少 8 个字符。关闭站内邮箱密码登录时，仍可用于支持密码登录的启动器。</span>
+    <span class="field-hint"><%= t('auth.password-help') %></span>
   </label>
   <label class="field">
     <span class="label"><%= t('auth.confirm-password') %></span>

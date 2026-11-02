@@ -1,11 +1,10 @@
-<%- include('../partials/layout-user-top', { title: '站内通知', pageDescription: '查看站点消息与账户通知。' }) %>
+<%- include('../partials/layout-user-top', { title: t('general.notifications'), pageDescription: t('notifications.page-description') }) %>
 <section class="card">
-  <div class="card-header flex-wrap gap-3"><div><h2 class="card-title">收件箱</h2><p class="card-description">共 <%= total %> 条<%= filter === 'unread' ? '未读' : '' %>通知</p></div><button class="btn btn-outline btn-sm" data-action="read-all-notifications" <%= total ? '' : 'disabled' %>><%- icon('check') %>全部已读</button></div>
-  <div class="record-tabs"><a href="/user/notifications" <%- filter === 'all' ? 'aria-current="page"' : '' %>>全部通知</a><a href="/user/notifications?filter=unread" <%- filter === 'unread' ? 'aria-current="page"' : '' %>>未读</a></div>
-  <% if (!rows.length) { %><div class="empty-state"><%- icon('mail','size-7') %><div class="empty-state-title"><%= filter === 'unread' ? '没有未读通知' : '暂无通知' %></div><p class="empty-state-text">新的站内消息会显示在这里。</p></div><% } %>
-  <div class="inbox-list"><% for (const item of rows) { %>
-    <details class="inbox-item" data-notification-id="<%= item.id %>" data-unread="<%= item.read_at ? 'false' : 'true' %>"><summary><span class="inbox-dot" aria-hidden="true"></span><span class="inbox-subject"><strong><%= item.title %></strong><time><%= item.created_at %></time></span><span class="badge badge-outline" data-read-state><%= item.read_at ? '已读' : '未读' %></span><%- icon('chevron-down') %></summary><div class="inbox-content prose"><%- item.html || '<p>此通知没有正文。</p>' %></div></details>
-  <% } %></div>
+  <div class="card-header flex-wrap gap-3"><div><h2 class="card-title"><%= t('notifications.inbox') %></h2><p class="card-description"><%= t('notifications.count', { count: total, state: filter === 'unread' ? t('notifications.unread-state') : '' }) %></p></div><button class="btn btn-outline btn-sm" data-action="read-all-notifications" <%= total ? '' : 'disabled' %>><%- icon('check') %><%= t('notifications.all-read') %></button></div>
+  <div class="record-tabs"><a href="/user/notifications" <%- filter === 'all' ? 'aria-current="page"' : '' %>><%= t('notifications.all') %></a><a href="/user/notifications?filter=unread" <%- filter === 'unread' ? 'aria-current="page"' : '' %>><%= t('notifications.unread') %></a></div>
+  <% if (!rows.length) { %><div class="empty-state"><%- icon('mail','size-7') %><div class="empty-state-title"><%= t(filter === 'unread' ? 'notifications.no-unread' : 'notifications.none') %></div><p class="empty-state-text"><%= t('notifications.none-help') %></p></div><% } %>
+  <% for (const item of rows) { %>
+  <details class="inbox-item" data-notification-id="<%= item.id %>" data-unread="<%= item.read_at ? 'false' : 'true' %>"><summary><span class="inbox-dot" aria-hidden="true"></span><span class="inbox-subject"><strong><%= item.title %></strong><time><%= item.created_at %></time></span><span class="badge badge-outline" data-read-state><%= t(item.read_at ? 'notifications.read' : 'notifications.unread-label') %></span><%- icon('chevron-down') %></summary><div class="inbox-content prose"><%- item.html || t('notifications.empty-body') %></div></details>
+  <% } %>
 </section>
-<%- include('../partials/pagination',{path:'/user/notifications',query:filter === 'unread' ? {filter:'unread'} : {}}) %>
 <%- include('../partials/layout-bottom') %>

@@ -59,7 +59,7 @@
   <% } %>
 </div>
 <% if (!localLoginEnabled && typeof registrationEnabled !== 'undefined' && registrationEnabled) { %>
-<p class="mt-4 text-center text-xs text-muted-foreground">首次使用时将自动创建账户。</p>
+<p class="mt-4 text-center text-xs text-muted-foreground"><%= t('auth.first-login-hint') %></p>
 <% } %>
 <% } %>
 

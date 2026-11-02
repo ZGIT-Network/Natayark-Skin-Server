@@ -7,7 +7,7 @@ import { queryOne, exec, insert, nowString, pool } from '../src/db.js';
 import { registerMojangRoutes } from '../src/routes/mojang.js';
 import { MojangVerificationError, microsoftVerificationUrl, resolveMinecraftIdentity, bindMinecraftIdentity, synchronizeVerifiedUuid, mojangConfiguration } from '../src/services/mojang.js';
 import { findUserByUid } from '../src/services/user.js';
-import { getOptionInt } from '../src/services/option.js';
+import { getOptionInt, getOption, setOption } from '../src/services/option.js';
 assert.match(config.db.tablePrefix, /^dev_/, 'Mojang tests require isolated dev_ tables');
 const suffix = crypto.randomBytes(4).toString('hex');
 const ids: number[] = [];
@@ -48,14 +48,17 @@ app.addHook('onRequest', async (request: any) => {
 await registerMojangRoutes(app);
 await app.ready();
 const oldKey = process.env.MICROSOFT_KEY, oldSecret = process.env.MICROSOFT_SECRET;
+const originalPlugins=await getOption('plugins_enabled','[]'),originalReward=await getOption('mojang_verification_score_award','0'),originalLimit=await getOption('max_players_per_user','0');
 try {
+  await setOption('mojang_verification_score_award','77');
+  await setOption('max_players_per_user','0');
   const login = new URL(microsoftVerificationUrl(settings, 'browser-state', verifier));
   check(login.searchParams.get('code_challenge_method') === 'S256' && login.searchParams.get('state') === 'browser-state' && !login.searchParams.has('client_secret'), 'Microsoft authorization uses state/S256 and keeps secrets off URL');
   const resolved = await resolveMinecraftIdentity(settings, 'test-code', verifier, fetcherWith(successfulResponses));
   check(resolved.uuid === identity.uuid && resolved.name === identity.name && seen.length === 6, 'Microsoft/Xbox/XSTS/Minecraft/ownership/profile chain returns identity');
   await assert.rejects(() => resolveMinecraftIdentity(settings, 'test-code', verifier, fetcherWith([successfulResponses[0], successfulResponses[1], new Response(JSON.stringify({ XErr: 2148916233 }), { status: 401 })])), (e: any) => e instanceof MojangVerificationError && e.code === 'xsts_denied'); checks++;
   await assert.rejects(() => resolveMinecraftIdentity(settings, 'test-code', verifier, fetcherWith([...successfulResponses.slice(0,4), { items: [] }])), (e: any) => e instanceof MojangVerificationError && e.code === 'not_owned'); checks++;
-  for (let i=0;i<3;i++) ids.push(await insert('INSERT INTO users(email,nickname,score,password,ip,last_sign_at,register_at,verified,verification_token) VALUES (?,?,500,?,?,?, ?,1,?)', [`mojang-${suffix}-${i}@example.invalid`, `M${suffix}${i}`, '', '127.0.0.1', nowString(), nowString(), '']));
+  for (let i=0;i<5;i++) ids.push(await insert('INSERT INTO users(email,nickname,score,password,ip,last_sign_at,register_at,verified,verification_token) VALUES (?,?,500,?,?,?, ?,1,?)', [`mojang-${suffix}-${i}@example.invalid`, `M${suffix}${i}`, '', '127.0.0.1', nowString(), nowString(), '']));
   names.push(identity.name);
   const before = (await queryOne<{ score: number }>('SELECT score FROM users WHERE uid=?', [ids[0]]))!.score;
   const reward = Math.max(0,await getOptionInt('mojang_verification_score_award',0));
@@ -76,6 +79,35 @@ try {
   check(!legacy.uuidSynced&&(await queryOne<{uuid:string}>('SELECT uuid FROM `uuid` WHERE name=?',[legacyName]))?.uuid===oldUuid,'Binding preserves existing offline UUID until explicit sync');
   await synchronizeVerifiedUuid(ids[1], (async()=>Response.json({id:realUuid,name:legacyName})) as typeof fetch);
   check((await queryOne<{uuid:string}>('SELECT uuid FROM `uuid` WHERE name=?',[legacyName]))?.uuid===realUuid,'Explicit sync updates only verified owner mapping');
+  await setOption('plugins_enabled',JSON.stringify([{name:'single-player-limit',version:'fixture'}]));
+  const localName='Local'+suffix,officialName='Real'+suffix,localUuid=crypto.randomBytes(16).toString('hex'),officialUuid=crypto.randomBytes(16).toString('hex');
+  names.push(localName,officialName);
+  const skin=await insert('INSERT INTO textures(name,type,hash,size,uploader,public,upload_at) VALUES(?,?,?,?,?,1,?)',['Owned skin','steve',crypto.randomBytes(32).toString('hex'),1,ids[3],nowString()]);
+  const cape=await insert('INSERT INTO textures(name,type,hash,size,uploader,public,upload_at) VALUES(?,?,?,?,?,1,?)',['Owned cape','cape',crypto.randomBytes(32).toString('hex'),1,ids[3],nowString()]);
+  const pid=await insert('INSERT INTO players(uid,name,tid_skin,tid_cape,last_modified) VALUES(?,?,?,?,?)',[ids[3],localName,skin,cape,nowString()]);
+  await exec('INSERT INTO `uuid`(name,uuid) VALUES(?,?)',[localName,localUuid]);
+  const playerBefore=await queryOne<any>('SELECT * FROM players WHERE pid=?',[pid]);
+  const single=await bindMinecraftIdentity(ids[3],{name:officialName,uuid:officialUuid});
+  check(!single.uuidSynced&&single.reward===77,'Single-player ownership verification succeeds without creating a second player');
+  assert.deepEqual(await queryOne('SELECT * FROM players WHERE pid=?',[pid]),playerBefore);checks++;
+  check((await queryOne<{uuid:string}>('SELECT uuid FROM `uuid` WHERE name=?',[localName]))?.uuid===localUuid&&!await queryOne('SELECT id FROM `uuid` WHERE name=?',[officialName]),'First verification retains the original UUID and creates no orphan official mapping');
+  await assert.rejects(()=>synchronizeVerifiedUuid(ids[3],(async()=>Response.json({id:officialUuid,name:identity.name})) as typeof fetch),(error:any)=>error instanceof MojangVerificationError&&error.code==='player_conflict');checks++;
+  assert.deepEqual(await queryOne('SELECT * FROM players WHERE pid=?',[pid]),playerBefore);checks++;
+  await synchronizeVerifiedUuid(ids[3],(async()=>Response.json({id:officialUuid,name:officialName})) as typeof fetch);
+  const synchronized=await queryOne<any>('SELECT * FROM players WHERE pid=?',[pid]);
+  check(synchronized?.name===officialName&&synchronized.uid===ids[3]&&synchronized.tid_skin===skin&&synchronized.tid_cape===cape,'Explicit synchronization renames the existing player while retaining PID, owner, skin and cape');
+  check((await queryOne<{uuid:string}>('SELECT uuid FROM `uuid` WHERE name=?',[officialName]))?.uuid===officialUuid&&!await queryOne('SELECT id FROM `uuid` WHERE name=?',[localName]),'Explicit synchronization migrates the name mapping to the official UUID');
+  const repeated=await bindMinecraftIdentity(ids[3],{name:officialName,uuid:officialUuid});
+  check(repeated.alreadyVerified&&repeated.reward===0&&(await queryOne<{score:number}>('SELECT score FROM users WHERE uid=?',[ids[3]]))?.score===577,'Repeated verification neither creates another player nor repeats the reward');
+  await setOption('plugins_enabled','[]');await setOption('max_players_per_user','2');
+  const historicNames=['First'+suffix,'Second'+suffix];names.push(...historicNames);
+  for(const name of historicNames)await exec('INSERT INTO players(uid,name,tid_skin,tid_cape,last_modified) VALUES(?,?,0,0,?)',[ids[4],name,nowString()]);
+  const historicIdentity={name:'History'+suffix,uuid:crypto.randomBytes(16).toString('hex')};names.push(historicIdentity.name);
+  await bindMinecraftIdentity(ids[4],historicIdentity);
+  check((await queryOne<{c:number}>('SELECT COUNT(*) c FROM players WHERE uid=?',[ids[4]]))?.c===2&&!await queryOne('SELECT id FROM `uuid` WHERE name=?',[historicIdentity.name]),'Verification honors a configured multi-player cap without creating an extra player or orphan mapping');
+  await setOption('plugins_enabled',JSON.stringify([{name:'single-player-limit',version:'fixture'}]));
+  await assert.rejects(()=>synchronizeVerifiedUuid(ids[4],(async()=>Response.json({id:historicIdentity.uuid,name:historicIdentity.name})) as typeof fetch),(error:any)=>error instanceof MojangVerificationError&&error.code==='player_conflict');checks++;
+  check((await queryOne<{c:number}>('SELECT COUNT(*) c FROM players WHERE uid=?',[ids[4]]))?.c===2,'Historical multi-player accounts are not silently merged or deleted during single-player verification');
   const anonymous=await app.inject('/user/verification');
   check(anonymous.statusCode===302,'Verification page requires login');
   delete process.env.MICROSOFT_KEY;delete process.env.MICROSOFT_SECRET;
@@ -95,12 +127,14 @@ try {
   check(replay.statusCode===400,'Microsoft state is single use');
   console.log(`Mojang integration: ${checks} checks passed (upstream HTTP mocked; database isolated)`);
 } finally {
+  await setOption('plugins_enabled',originalPlugins);await setOption('mojang_verification_score_award',originalReward);await setOption('max_players_per_user',originalLimit);
   if(oldKey===undefined)delete process.env.MICROSOFT_KEY;else process.env.MICROSOFT_KEY=oldKey;
   if(oldSecret===undefined)delete process.env.MICROSOFT_SECRET;else process.env.MICROSOFT_SECRET=oldSecret;
   for(const uid of ids){
     await exec('DELETE FROM mojang_verifications WHERE user_id=?',[uid]);
     await exec("DELETE FROM mcn_oauth_flows WHERE JSON_EXTRACT(payload,'$.linkUid')=?",[uid]);
     await exec('DELETE FROM players WHERE uid=?',[uid]);
+    await exec('DELETE FROM textures WHERE uploader=?',[uid]);
     await exec('DELETE FROM users WHERE uid=?',[uid]);
   }
   for(const name of names)await exec('DELETE FROM `uuid` WHERE name=?',[name]);

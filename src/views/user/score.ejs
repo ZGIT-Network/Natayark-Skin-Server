@@ -1,10 +1,10 @@
-<%- include('../partials/layout-user-top', { title: '积分规则', pageDescription: '积分用于角色、材质储存和收藏，以下为站点当前设置。' }) %>
-<div class="score-summary"><div><span class="text-sm text-muted-foreground">当前余额</span><strong><%= user.score %><small>积分</small></strong></div><a href="/user" class="btn btn-outline btn-sm">返回用户中心</a></div>
-<div class="grid gap-5 lg:grid-cols-2"><section class="card"><div class="card-header"><h2 class="card-title">使用积分</h2></div><dl class="rule-list">
-  <% for (const [label,key,unit] of [['新增角色','score_per_player','/ 个'],['公开材质储存','score_per_storage','/ KB'],['私有材质储存','private_score_per_storage','/ KB'],['收藏材质','score_per_closet_item','/ 件']]) { %><div><dt><%= label %></dt><dd><strong><%= rules[key] %></strong> <span><%= unit %></span></dd></div><% } %>
-</dl><p class="rule-note">上传费用包含储存和收藏费用，再减去上传奖励；上传页会显示预估费用。</p></section>
-<section class="card"><div class="card-header"><h2 class="card-title">获得与返还</h2></div><dl class="rule-list">
-  <% for (const [label,key,unit] of [['上传奖励','score_award_per_texture','/ 件'],['被他人收藏','score_award_per_like','/ 次'],['举报采纳奖励','reporter_reward_score','/ 次']]) { %><div><dt><%= label %></dt><dd><strong><%= rules[key] %></strong> <span><%= unit %></span></dd></div><% } %>
-  <div><dt>签到奖励</dt><dd><strong><%= rules.sign_score.replace(',', ' – ') %></strong></dd></div><div><dt>移除材质返还费用</dt><dd><%= ['true','1'].includes(rules.return_score) ? '已启用' : '未启用' %></dd></div>
-</dl><p class="rule-note">签到<%= ['true','1'].includes(rules.sign_after_zero) ? '每日零点后重置' : '间隔 ' + rules.sign_gap_time + ' 小时' %>。提交举报时积分变动为 <%= Number(rules.reporter_score_modification) > 0 ? '+' : '' %><%= rules.reporter_score_modification %>，审核结果会影响最终结算。</p></section></div>
+<%- include('../partials/layout-user-top', { title: t('score.rules-title'), pageDescription: t('score.rules-description') }) %>
+<div class="score-summary"><div><span class="text-sm text-muted-foreground"><%= t('score.balance') %></span><strong><%= user.score %><small><%= t('score.points') %></small></strong></div><a href="/user" class="btn btn-outline btn-sm"><%= t('score.back') %></a></div>
+<div class="grid gap-5 lg:grid-cols-2"><section class="card"><div class="card-header"><h2 class="card-title"><%= t('score.spend') %></h2></div><dl class="rule-list">
+  <% for (const [labelKey,key,unitKey] of [['score.new-player','score_per_player','score.per-item'],['score.public-storage','score_per_storage','score.per-kb'],['score.private-storage','private_score_per_storage','score.per-kb'],['score.closet','score_per_closet_item','score.per-item']]) { %><div><dt><%= t(labelKey) %></dt><dd><strong><%= rules[key] %></strong> <span><%= t(unitKey) %></span></dd></div><% } %>
+</dl><p class="rule-note"><%= t('score.note') %></p></section>
+<section class="card"><div class="card-header"><h2 class="card-title"><%= t('score.earn') %></h2></div><dl class="rule-list">
+  <% for (const [labelKey,key,unitKey] of [['score.upload-award','score_award_per_texture','score.per-item'],['score.like-award','score_award_per_like','score.per-like'],['score.report-award','reporter_reward_score','score.per-like']]) { %><div><dt><%= t(labelKey) %></dt><dd><strong><%= rules[key] %></strong> <span><%= t(unitKey) %></span></dd></div><% } %>
+  <div><dt><%= t('score.sign-award') %></dt><dd><strong><%= rules.sign_score.replace(',', ' – ') %></strong></dd></div><div><dt><%= t('score.return-award') %></dt><dd><%= t(['true','1'].includes(rules.return_score) ? 'common.enabled' : 'common.disabled') %></dd></div>
+</dl><p class="rule-note"><%= t('score.sign-note', { reset: ['true','1'].includes(rules.sign_after_zero) ? t('score.sign-reset-zero') : t('score.sign-reset-gap', { hours: rules.sign_gap_time }), change: (Number(rules.reporter_score_modification) > 0 ? '+' : '') + rules.reporter_score_modification }) %></p></section></div>
 <%- include('../partials/layout-bottom') %>

@@ -2,13 +2,14 @@
     </div>
     <footer class="compact-footer mt-6 text-center text-xs text-muted-foreground"><div><%- include('copyright') %></div><%- include('powered-by') %></footer>
   </div>
+  </main>
 <script>
   window.__CSRF = <%- JSON.stringify(typeof csrf !== 'undefined' ? csrf : '') %>;
   window.__USER_ID = 0;
 </script>
-<script src="/js/ui.js?v=8"></script>
-<script src="/js/app.js?v=8"></script>
-<script src="/js/navigation.js?v=8"></script>
+<script src="/js/ui.js?v=11"></script>
+<script src="/js/app.js?v=11"></script>
+<script src="/js/navigation.js?v=11"></script>
 <% if (typeof customJs !== 'undefined' && customJs) { %>
 <script><%- customJs %></script>
 <% } %>

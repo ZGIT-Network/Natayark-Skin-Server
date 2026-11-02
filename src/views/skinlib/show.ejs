@@ -1,4 +1,4 @@
-<%- include('../partials/layout-user-top', { title: texture.name, pageDescription: '材质详情与应用。' }) %>
+<%- include('../partials/layout-user-top', { title: texture.name, pageDescription: t('skinlib.detail-description') }) %>
 
 <div class="grid gap-5 lg:grid-cols-2">
   <section class="card">
@@ -14,36 +14,36 @@
         <div class="min-w-0">
           <h2 class="card-title"><%= texture.name %></h2>
           <p class="card-description">
-            上传者 <%= texture.nickname || ('UID ' + texture.uploader) %> · <%= texture.upload_at %>
+            <%= t('skinlib.uploader') %> <%= texture.nickname || ('UID ' + texture.uploader) %> · <%= texture.upload_at %>
           </p>
         </div>
         <div class="flex flex-wrap gap-1.5">
-          <span class="badge badge-secondary"><%= texture.type === 'cape' ? '披风' : (texture.type === 'alex' ? 'Alex' : 'Steve') %></span>
-          <% if (!texture.public) { %><span class="badge badge-warning">私有</span><% } %>
-          <span class="badge badge-outline">收藏 <%= texture.likes %></span>
+          <span class="badge badge-secondary"><%= texture.type === 'cape' ? t('skinlib.type-cape') : (texture.type === 'alex' ? 'Alex' : 'Steve') %></span>
+          <% if (!texture.public) { %><span class="badge badge-warning"><%= t('skinlib.private') %></span><% } %>
+          <span class="badge badge-outline"><%= t('skinlib.likes-count', { count: texture.likes }) %></span>
         </div>
       </div>
       <div class="card-content">
         <% if (user) { %>
         <div class="flex flex-wrap gap-2">
           <% if (!inCloset) { %>
-          <button type="button" class="btn btn-primary" data-action="add-closet" data-tid="<%= texture.tid %>"><%- icon('star') %>收藏到衣柜</button>
+          <button type="button" class="btn btn-primary" data-action="add-closet" data-tid="<%= texture.tid %>"><%- icon('star') %><%= t('skinlib.add-closet') %></button>
           <% } else { %>
-          <a class="btn btn-outline" href="/user/closet">已在衣柜中</a>
+          <a class="btn btn-outline" href="/user/closet"><%= t('skinlib.in-closet') %></a>
           <% } %>
-          <button type="button" class="btn btn-outline" data-dialog-open="dialog-report"><%- icon('flag') %>举报</button>
+          <button type="button" class="btn btn-outline" data-dialog-open="dialog-report"><%- icon('flag') %><%= t('skinlib.report') %></button>
           <% if (isOwner || isAdmin) { %>
-          <button type="button" class="btn btn-outline" data-action="rename-texture" data-tid="<%= texture.tid %>" data-name="<%= texture.name %>"><%- icon('pencil') %>重命名</button>
-          <button type="button" class="btn btn-outline" data-action="toggle-privacy" data-tid="<%= texture.tid %>" data-public="<%= texture.public ? '1' : '0' %>"><%- icon('eye') %><%= texture.public ? '设为私有' : '设为公开' %></button>
-          <button type="button" class="btn btn-ghost text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="delete-texture" data-tid="<%= texture.tid %>"><%- icon('trash-2') %>删除</button>
+          <button type="button" class="btn btn-outline" data-action="rename-texture" data-tid="<%= texture.tid %>" data-name="<%= texture.name %>"><%- icon('pencil') %><%= t('skinlib.rename') %></button>
+          <button type="button" class="btn btn-outline" data-action="toggle-privacy" data-tid="<%= texture.tid %>" data-public="<%= texture.public ? '1' : '0' %>"><%- icon('eye') %><%= t(texture.public ? 'skinlib.set-private' : 'skinlib.set-public') %></button>
+          <button type="button" class="btn btn-ghost text-destructive hover:bg-destructive/10 hover:text-destructive" data-action="delete-texture" data-tid="<%= texture.tid %>"><%- icon('trash-2') %><%= t('skinlib.delete') %></button>
           <% } %>
         </div>
         <% } %>
-        <% if (allowDownload) { %><a class="btn btn-outline mt-3" href="/raw/<%= texture.tid %>" download="<%= texture.name %>.png"><%- icon('download') %>下载材质</a><% } %>
+        <% if (allowDownload) { %><a class="btn btn-outline mt-3" href="/raw/<%= texture.tid %>" download="<%= texture.name %>.png"><%- icon('download') %><%= t('skinlib.download-texture') %></a><% } %>
         <% if ((isOwner || isAdmin) && texture.type !== 'cape') { %>
         <form data-action="texture-model" data-tid="<%= texture.tid %>" class="mt-4 flex items-end gap-2">
-          <label class="field flex-1"><span class="label">皮肤模型</span><span class="select-wrap"><select class="select" name="type"><option value="steve" <%= texture.type === 'steve' ? 'selected' : '' %>>Steve（经典）</option><option value="alex" <%= texture.type === 'alex' ? 'selected' : '' %>>Alex（纤细）</option></select></span></label>
-          <button type="submit" class="btn btn-outline">修改模型</button>
+          <label class="field flex-1"><span class="label"><%= t('skinlib.model') %></span><span class="select-wrap"><select class="select" name="type"><option value="steve" <%= texture.type === 'steve' ? 'selected' : '' %>><%= t('skinlib.model-classic') %></option><option value="alex" <%= texture.type === 'alex' ? 'selected' : '' %>><%= t('skinlib.model-slim') %></option></select></span></label>
+          <button type="submit" class="btn btn-outline"><%= t('skinlib.change-model') %></button>
         </form>
         <% } %>
       </div>
@@ -51,17 +51,17 @@
 
     <% if (user) { %>
     <div class="card">
-      <div class="card-header"><div><h2 class="card-title">应用到角色</h2><p class="card-description">选择要应用此材质的角色。</p></div></div>
+      <div class="card-header"><div><h2 class="card-title"><%= t('skinlib.apply') %></h2><p class="card-description"><%= t('skinlib.apply-help') %></p></div></div>
       <div class="card-content">
         <% if (applyPlayers.length === 0) { %>
-        <p class="text-sm text-muted-foreground">你还没有角色，<a href="/user/player" class="font-medium text-brand-strong hover:underline dark:text-brand">去创建</a>。</p>
+        <p class="text-sm text-muted-foreground"><%= t('skinlib.no-players') %><a href="/user/player" class="font-medium text-brand-strong hover:underline dark:text-brand"><%= t('skinlib.go-create') %></a>。</p>
         <% } else { %>
         <% if (!inCloset && !isAdmin) { %>
-        <p class="mb-3 text-sm text-muted-foreground">请先点击「收藏到衣柜」，再选择角色应用。</p>
+        <p class="mb-3 text-sm text-muted-foreground"><%= t('skinlib.add-first') %></p>
         <% } %>
         <div class="flex flex-wrap gap-2">
           <% for (const p of applyPlayers) { %>
-          <button type="button" class="btn btn-outline btn-sm" data-action="apply-texture" data-pid="<%= p.pid %>" data-player-name="<%= p.name %>" data-tid="<%= texture.tid %>" data-type="<%= texture.type === 'cape' ? 'cape' : 'skin' %>" <%= p.applied || (!inCloset && !isAdmin) ? 'disabled' : '' %>><%- icon('shirt') %><%= p.name %><%= p.applied ? ' · 已应用' : '' %></button>
+          <button type="button" class="btn btn-outline btn-sm" data-action="apply-texture" data-pid="<%= p.pid %>" data-player-name="<%= p.name %>" data-tid="<%= texture.tid %>" data-type="<%= texture.type === 'cape' ? 'cape' : 'skin' %>" <%= p.applied || (!inCloset && !isAdmin) ? 'disabled' : '' %>><%- icon('shirt') %><%= p.name %><%= p.applied ? ' · ' + t('skinlib.applied') : '' %></button>
           <% } %>
         </div>
         <% } %>
@@ -70,13 +70,13 @@
     <% } %>
 
     <div class="card">
-      <div class="card-header"><div><h2 class="card-title">描述</h2></div></div>
+      <div class="card-header"><div><h2 class="card-title"><%= t('skinlib.description') %></h2></div></div>
       <div class="card-content">
-        <div id="texture-description" class="prose text-sm leading-relaxed"><%- descriptionHtml || '<p class="text-muted-foreground">暂无描述</p>' %></div>
+        <div id="texture-description" class="prose text-sm leading-relaxed"><%- descriptionHtml || '<p class="text-muted-foreground">' + t('skinlib.no-description') + '</p>' %></div>
         <% if (isOwner || isAdmin) { %>
         <form data-action="save-description" data-tid="<%= texture.tid %>" class="mt-4 space-y-3">
-          <label class="field"><span class="label">编辑描述</span><textarea class="textarea" name="description" rows="6" <%- descriptionMaxLength ? 'maxlength="' + descriptionMaxLength + '"' : '' %> placeholder="支持 Markdown，可填写作者、来源与使用说明。"><%= description %></textarea><span class="field-hint"><%= descriptionMaxLength ? '最多 ' + descriptionMaxLength + ' 个字符。' : '正文最多 64KB。' %></span></label>
-          <button class="btn btn-outline btn-sm" type="submit"><%- icon('check') %>保存描述</button>
+          <label class="field"><span class="label"><%= t('skinlib.edit-description') %></span><textarea class="textarea" name="description" rows="6" <%- descriptionMaxLength ? 'maxlength="' + descriptionMaxLength + '"' : '' %> placeholder="<%= t('skinlib.description-placeholder') %>"><%= description %></textarea><span class="field-hint"><%= descriptionMaxLength ? t('skinlib.description-limit', { count: descriptionMaxLength }) : t('skinlib.description-bytes') %></span></label>
+          <button class="btn btn-outline btn-sm" type="submit"><%- icon('check') %><%= t('skinlib.save-description') %></button>
         </form>
         <% } %>
       </div>
@@ -87,15 +87,15 @@
 <% if (user) { %>
 <dialog class="dialog" id="dialog-report">
   <div class="dialog-header">
-    <h2 class="dialog-title">举报材质</h2>
-    <p class="dialog-description">请说明举报理由，管理员会尽快处理。</p>
-    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="关闭"><%- icon('x') %></button>
+    <h2 class="dialog-title"><%= t('skinlib.report-title') %></h2>
+    <p class="dialog-description"><%= t('skinlib.report-help') %></p>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm dialog-close" data-dialog-close aria-label="<%= t('common.close') %>"><%- icon('x') %></button>
   </div>
   <form data-action="submit-report" data-tid="<%= texture.tid %>">
     <div class="dialog-body">
       <label class="field">
-        <span class="label">理由</span>
-        <textarea class="textarea" name="reason" rows="4" required maxlength="1000" placeholder="侵犯版权、违规内容等"></textarea>
+        <span class="label"><%= t('skinlib.reason') %></span>
+        <textarea class="textarea" name="reason" rows="4" required maxlength="1000" placeholder="<%= t('skinlib.reason-placeholder') %>"></textarea>
       </label>
       <p class="mt-2 hidden text-sm text-destructive" data-form-error></p>
     </div>

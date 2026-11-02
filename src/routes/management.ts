@@ -1,8 +1,4 @@
 import type { FastifyInstance } from 'fastify';
-import os from 'node:os';
-import fs from 'node:fs/promises';
-import { constants } from 'node:fs';
-import { config } from '../config.js';
 import { queryOne, nowString } from '../db.js';
 import { isAdmin, findUserByUid } from '../services/user.js';
 import { closetOf } from '../services/texture.js';
@@ -11,7 +7,7 @@ import { pageContext } from './page-context.js';
 import { requestEmailChange } from './auth.js';
 import { dailyQuote } from '../services/integrations.js';
 import { pluginEnabled } from '../services/plugins.js';
-import { APP_VERSION } from '../version.js';
+import {systemStatus} from '../services/system-status.js';
 
 export async function registerManagementRoutes(app: FastifyInstance, handlers: Map<string,any>) {
   app.get('/user/quote',async(request,reply)=>{
@@ -74,10 +70,8 @@ export async function registerManagementRoutes(app: FastifyInstance, handlers: M
   });
   app.get('/admin/status',async(request,reply) => {
     if (!admin(request,reply)) return;
-    const database = await queryOne<{version:string}>('SELECT VERSION() AS version');
-    let textureWritable = false;
-    try { await fs.access(config.textureDir,constants.R_OK | constants.W_OK); textureWritable = true; } catch { /* Show an actionable storage state. */ }
-    return reply.view('admin/status',{...await pageContext(request,'系统状态'),runtime:{version:APP_VERSION,node:process.version,platform:`${os.type()} ${os.arch()}`,uptime:Math.floor(process.uptime() / 60),database:database?.version ?? '未知',textureWritable},mailConfigured:!!(config.mail.host && config.mail.fromAddress)});
+    const runtime=await systemStatus(app.version);
+    return reply.view('admin/status',{...await pageContext(request,'系统状态'),runtime,mailConfigured:runtime.mailConfigured});
   });
   app.get('/admin/closet/:uid',async(request,reply) => {
     if (!admin(request,reply)) return;

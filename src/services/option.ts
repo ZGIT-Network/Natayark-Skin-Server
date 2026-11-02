@@ -36,6 +36,7 @@ const DEFAULTS: Record<string, string> = {
   texture_name_regexp: '',
 
   score_per_player: '100',
+  max_players_per_user: '0',
   score_per_storage: '3',
   private_score_per_storage: '25',
   score_per_closet_item: '2',
@@ -96,7 +97,6 @@ export async function getOption(name: string, defaultValue?: string): Promise<st
   if (name === 'site_url' && config.publicOrigin) return config.publicOrigin;
   await loadOptions();
   const v = cache.data.get(name);
-  if (/^site_name(?:_[A-Za-z_]+)?$/.test(name) && /^(?:Natayark Skins?|MCNSKIN)$/i.test((v || '').trim())) return DEFAULTS.site_name;
   if (v !== undefined) return v; // stored value wins, including empty string
   if (defaultValue !== undefined) return defaultValue;
   return DEFAULTS[name] ?? null;

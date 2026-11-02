@@ -1,35 +1,35 @@
 <%- include('../partials/layout-standalone-top', { brand: 'Yggdrasil Connect' }) %>
 
 <div class="mb-5">
-  <h1 class="text-lg font-semibold tracking-tight">授权请求</h1>
-  <p class="mt-1 text-sm text-muted-foreground">应用 <strong class="text-foreground"><%= clientName %></strong> 请求以下权限<%= clientIsPublic ? '（公共客户端）' : '' %>。</p>
+  <h1 class="text-lg font-semibold tracking-tight"><%= t('device.request-title') %></h1>
+  <p class="mt-1 text-sm text-muted-foreground"><%= t('device.request-help', { client: clientName, public: clientIsPublic ? t('device.public-client') : '' }) %></p>
 </div>
 
 <% if (error === 'NO_PROFILES') { %>
 <div class="alert alert-destructive mb-4" role="alert">
   <%- icon('alert-triangle') %>
-  <div>你名下还没有任何角色，无法完成需要绑定角色的授权。请先<a href="/user/player">创建角色</a>。</div>
+  <div><%= t('device.no-players') %><a href="/user/player"><%= t('device.create-player') %></a>。</div>
 </div>
 <form method="post" action="/connect/interaction/<%= uid %>/deny">
   <input type="hidden" name="csrf" value="<%= csrf %>">
-  <button class="btn btn-destructive w-full" type="submit">拒绝授权</button>
+  <button class="btn btn-destructive w-full" type="submit"><%= t('device.deny') %></button>
 </form>
 <% } else if (!loggedIn) { %>
 <div class="alert alert-info mb-4">
   <%- icon('log-in') %>
-  <div>请先登录皮肤站，然后继续此次授权。</div>
+  <div><%= t('device.login-first') %></div>
 </div>
-<a href="/auth/login?redirect=<%= encodeURIComponent('/connect/interaction/' + uid) %>" class="btn btn-primary btn-lg w-full">登录并继续</a>
+<a href="/auth/login?redirect=<%= encodeURIComponent('/connect/interaction/' + uid) %>" class="btn btn-primary btn-lg w-full"><%= t('general.login') %></a>
 <% } else { %>
 <%
   const scopeLabels = {
-    'openid': '确认你的身份',
-    'profile': '读取你的昵称与头像',
-    'email': '读取你的邮箱地址',
-    'offline_access': '在你离线时保持访问（刷新令牌）',
-    'Yggdrasil.PlayerProfiles.Select': '获取你选择的角色',
-    'Yggdrasil.PlayerProfiles.Read': '读取你名下的角色列表',
-    'Yggdrasil.Server.Join': '以你的角色加入 Minecraft 服务器',
+    'openid': t('device.scope-openid'),
+    'profile': t('device.scope-profile'),
+    'email': t('device.scope-email'),
+    'offline_access': t('device.scope-offline'),
+    'Yggdrasil.PlayerProfiles.Select': t('device.scope-select'),
+    'Yggdrasil.PlayerProfiles.Read': t('device.scope-read'),
+    'Yggdrasil.Server.Join': t('device.scope-join'),
   };
 %>
 <ul class="mb-5 divide-y divide-border rounded-lg border border-border">
@@ -45,7 +45,7 @@
   <input type="hidden" name="csrf" value="<%= csrf %>">
   <% if (needsSelect) { %>
   <fieldset>
-    <legend class="label mb-2">选择要绑定的角色</legend>
+    <legend class="label mb-2"><%= t('device.choose-player') %></legend>
     <div class="grid gap-2">
       <% for (const p of profiles) { %>
       <label class="radio-row rounded-lg border border-border p-3 hover:bg-accent">
@@ -59,11 +59,11 @@
     </div>
   </fieldset>
   <% } %>
-  <button class="btn btn-primary btn-lg w-full" type="submit">同意授权</button>
+  <button class="btn btn-primary btn-lg w-full" type="submit"><%= t('device.allow') %></button>
 </form>
 <form method="post" action="/connect/interaction/<%= uid %>/deny" class="mt-2">
   <input type="hidden" name="csrf" value="<%= csrf %>">
-  <button class="btn btn-outline w-full" type="submit">拒绝</button>
+  <button class="btn btn-outline w-full" type="submit"><%= t('device.reject') %></button>
 </form>
 <% } %>
 

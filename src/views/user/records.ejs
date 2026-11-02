@@ -1,10 +1,10 @@
-<%- include('../partials/layout-user-top', { title: typeof title !== 'undefined' ? title : '记录' }) %>
+<%- include('../partials/layout-user-top', { title: typeof title !== 'undefined' ? title : t('records.title') }) %>
 
 <% if (!rows.length) { %>
 <div class="card">
   <div class="empty-state">
-    
-    <div class="empty-state-title">暂无记录</div>
+
+    <div class="empty-state-title"><%= t('records.none') %></div>
   </div>
 </div>
 <% } else { %>

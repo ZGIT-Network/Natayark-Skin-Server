@@ -14,7 +14,19 @@ npm start
 
 生产环境设置 `NODE_ENV=production`，并使用 HTTPS。`APP_KEY` 必须是私密随机值，至少 32 个字符；`npm run setup` 会为新配置生成密钥。不要在重启或增加实例时重新生成它。
 
-建议由反向代理提供 HTTPS，Node 监听本机或私有网络。`PUBLIC_ORIGIN` 填外部 HTTPS 地址。只有经过受信任代理时才配置 `TRUST_PROXY`，可使用 `loopback` 或明确的 IP/CIDR 列表。
+建议由反向代理提供 HTTPS，Node 监听本机或私有网络。`PUBLIC_ORIGIN` 填外部 HTTPS 地址。
+
+`TRUST_PROXY` 默认是 `loopback`，同机 nginx 只要转发 `X-Forwarded-For` 和 `X-Forwarded-Proto`，登录限流、验证码和日志记录到的就是访客真实 IP。反向代理在容器或另一台机器时，改成代理出口所在的 IP/CIDR，例如 `TRUST_PROXY=loopback,172.18.0.0/16`；不要使用 `true` 信任任意来源。`HOST=127.0.0.1` 时 Node 只监听本机，让 nginx 独占对外端口：
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
 
 ## 持久化
 

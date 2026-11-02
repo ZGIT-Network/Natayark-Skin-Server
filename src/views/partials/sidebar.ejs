@@ -7,7 +7,7 @@
 <aside class="sidebar" data-sidebar>
   <div class="sidebar-brand">
     <%- include('brand') %>
-    <button type="button" class="btn btn-ghost btn-icon btn-sm ml-auto lg:hidden" data-sidebar-close aria-label="关闭菜单">
+    <button type="button" class="btn btn-ghost btn-icon btn-sm ml-auto lg:hidden" data-sidebar-close aria-label="<%= t('nav.close-menu') %>">
       <%- icon('x') %>
     </button>
   </div>
@@ -32,14 +32,14 @@
     <a href="/admin" class="nav-item <%= isActive('/admin', true) ? 'active' : '' %>"><%- icon('layout-dashboard') %><span><%= t('general.dashboard') %></span></a>
     <a href="/admin/users" class="nav-item <%= isActive('/admin/users') ? 'active' : '' %>"><%- icon('users') %><span><%= t('general.user-manage') %></span></a>
     <a href="/admin/players" class="nav-item <%= isActive('/admin/players') ? 'active' : '' %>"><%- icon('gamepad-2') %><span><%= t('general.player-manage') %></span></a>
-    <a href="/admin/textures" class="nav-item <%= isActive('/admin/textures') ? 'active' : '' %>"><%- icon('image') %><span>材质管理</span></a>
+    <a href="/admin/textures" class="nav-item <%= isActive('/admin/textures') ? 'active' : '' %>"><%- icon('image') %><span><%= t('admin.textures') %></span></a>
     <a href="/admin/reports" class="nav-item <%= isActive('/admin/reports') ? 'active' : '' %>"><%- icon('flag') %><span><%= t('general.report-manage') %></span></a>
-    <a href="/admin/notifications" class="nav-item <%= isActive('/admin/notifications') ? 'active' : '' %>"><%- icon('mail') %><span>站内通知</span></a>
-    <a href="/admin/clients" class="nav-item <%= isActive('/admin/clients') ? 'active' : '' %>"><%- icon('key-round') %><span>OAuth / OIDC</span></a>
-    <a href="/admin/settings" class="nav-item <%= isActive('/admin/settings') ? 'active' : '' %>"><%- icon('paintbrush') %><span><%= t('general.customize') %></span></a>
+    <a href="/admin/notifications" class="nav-item <%= isActive('/admin/notifications') ? 'active' : '' %>"><%- icon('mail') %><span><%= t('admin.notifications') %></span></a>
+    <a href="/admin/clients" class="nav-item <%= isActive('/admin/clients') ? 'active' : '' %>"><%- icon('code-xml') %><span><%= t('admin.clients') %></span></a>
+    <a href="/admin/settings" class="nav-item <%= isActive('/admin/settings') ? 'active' : '' %>"><%- icon('settings') %><span><%= t('general.customize') %></span></a>
     <a href="/admin/translations" class="nav-item <%= isActive('/admin/translations') || isActive('/admin/i18n') ? 'active' : '' %>"><%- icon('languages') %><span><%= t('general.i18n') %></span></a>
-    <a href="/admin/ygg-log" class="nav-item <%= isActive('/admin/ygg-log') ? 'active' : '' %>"><%- icon('scroll-text') %><span>Yggdrasil 日志</span></a>
-    <a href="/admin/status" class="nav-item <%= isActive('/admin/status') ? 'active' : '' %>"><%- icon('server') %><span>系统状态</span></a>
+    <a href="/admin/ygg-log" class="nav-item <%= isActive('/admin/ygg-log') ? 'active' : '' %>"><%- icon('scroll-text') %><span><%= t('admin.ygg-log') %></span></a>
+    <a href="/admin/status" class="nav-item <%= isActive('/admin/status') ? 'active' : '' %>"><%- icon('server') %><span><%= t('admin.status') %></span></a>
 
     <div class="nav-group-label"><%= t('general.back') %></div>
     <a href="/user" class="nav-item"><%- icon('layout-dashboard') %><span><%= t('general.user-center') %></span></a>
@@ -49,16 +49,16 @@
     <a href="/user" class="nav-item <%= isActive('/user', true) ? 'active' : '' %>"><%- icon('layout-dashboard') %><span><%= t('general.dashboard') %></span></a>
     <a href="/user/player" class="nav-item <%= isActive('/user/player') ? 'active' : '' %>"><%- icon('gamepad-2') %><span><%= t('general.player-manage') %></span></a>
     <a href="/user/closet" class="nav-item <%= isActive('/user/closet') ? 'active' : '' %>"><%- icon('shirt') %><span><%= t('general.my-closet') %></span></a>
-    <a href="/user/notifications" class="nav-item <%= isActive('/user/notifications') ? 'active' : '' %>"><%- icon('mail') %><span>站内通知</span></a>
-    <a href="/user/score-info" class="nav-item <%= isActive('/user/score-info') ? 'active' : '' %>"><%- icon('wallet') %><span>积分规则</span></a>
-    <a href="/user/reports" class="nav-item <%= isActive('/user/reports') ? 'active' : '' %>"><%- icon('flag') %><span>我的举报</span></a>
+    <a href="/user/notifications" class="nav-item <%= isActive('/user/notifications') ? 'active' : '' %>"><%- icon('mail') %><span><%= t('general.notifications') %></span></a>
+    <a href="/user/score-info" class="nav-item <%= isActive('/user/score-info') ? 'active' : '' %>"><%- icon('wallet') %><span><%= t('score.rules-title') %></span></a>
+    <a href="/user/reports" class="nav-item <%= isActive('/user/reports') ? 'active' : '' %>"><%- icon('flag') %><span><%= t('reports.title') %></span></a>
 
     <div class="nav-group-label"><%= t('general.account') %></div>
     <a href="/user/profile" class="nav-item <%= isActive('/user/profile') ? 'active' : '' %>"><%- icon('user-round') %><span><%= t('general.profile') %></span></a>
     <a href="/user/connections" class="nav-item <%= isActive('/user/connections') ? 'active' : '' %>"><%- icon('link') %><span><%= t('general.connections') %></span></a>
     <% if (typeof hideAdvancedMenu === 'undefined' || !hideAdvancedMenu) { %><a href="/user/applications" class="nav-item <%= isActive('/user/applications') ? 'active' : '' %>"><%- icon('code-xml') %><span><%= t('general.oauth-manage') %></span></a><% } %>
     <a href="/user/verification" class="nav-item <%= isActive('/user/verification') ? 'active' : '' %>"><%- icon('badge-check') %><span><%= t('general.verification') %></span></a>
-    <a href="/user/sharing" class="nav-item <%= isActive('/user/sharing') ? 'active' : '' %>"><%- icon('gift') %><span><%= t('general.sharing') %></span></a>
+    <a href="/user/sharing" class="nav-item <%= isActive('/user/sharing') ? 'active' : '' %>"><%- icon('share-2') %><span><%= t('general.sharing') %></span></a>
 
     <div class="nav-group-label"><%= t('general.explore') %></div>
     <a href="/skinlib" class="nav-item <%= isActive('/skinlib') ? 'active' : '' %>"><%- icon('archive') %><span><%= t('general.skinlib') %></span></a>
@@ -72,10 +72,7 @@
 
   <div class="sidebar-footer">
     <% if (user) { %>
-    <form method="post" action="/auth/logout">
-      <input type="hidden" name="csrf" value="<%= csrf %>">
-      <button type="submit" class="nav-item w-full text-left"><%- icon('log-out') %><span><%= t('general.logout') %></span></button>
-    </form>
+    <a href="/auth/logout" class="nav-item" data-native-navigation data-logout-confirm data-confirm-title="<%= t('auth.logout') %>" data-confirm="<%= t('auth.logout-confirm') %>" data-confirm-text="<%= t('auth.logout') %>" data-cancel-text="<%= t('auth.cancel') %>"><%- icon('log-out') %><span><%= t('general.logout') %></span></a>
     <% } else { %>
     <a href="/auth/login" class="nav-item"><%- icon('log-in') %><span><%= t('general.login') %></span></a>
     <% } %>

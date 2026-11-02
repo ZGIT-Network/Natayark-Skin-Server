@@ -24,7 +24,7 @@
 
   var CSRF = window.__CSRF || '';
   var quote = document.querySelector('[data-site-quote]');
-  if(quote)fetch('/user/quote',{credentials:'same-origin'}).then(function(response){return response.ok&&response.status!==204?response.json():null;}).then(function(data){if(data&&typeof data.text==='string'){quote.textContent=data.text;quote.title='来源：'+data.source+(data.stale?'（缓存或备用内容）':'');}}).catch(function(){});
+  if(quote)fetch('/user/quote',{credentials:'same-origin',signal:scope.signal}).then(function(response){return response.ok&&response.status!==204?response.json():null;}).then(function(data){if(!scope.signal.aborted&&data&&typeof data.text==='string'){var english=document.documentElement.lang==='en';quote.textContent=data.text;quote.title=(english?'Source: ':'来源：')+data.source+(data.stale?(english?' (cached or fallback)':'（缓存或备用内容）'):'');}}).catch(function(){});
 
   function api(method, url, body) {
     if (body === undefined && method !== 'GET' && method !== 'HEAD') body = {};
@@ -76,6 +76,15 @@
 
   /* --- Sign-in bonus --------------------------------------------------------- */
   var signBtn = document.getElementById('sign-btn');
+  function refreshUsage() {
+    var container=document.querySelector('[data-account-usage]');
+    if(!container)return;
+    fetch('/user/usage',{credentials:'same-origin',signal:scope.signal}).then(function(response){return response.ok?response.json():null;}).then(function(data){
+      if(!data||scope.signal.aborted)return;
+      container.querySelectorAll('[data-usage-value]').forEach(function(node){var path=node.dataset.usageValue.split('.'),value=data[path[0]];if(path[1])value=value[path[1]];node.textContent=value===null?'∞':String(value);});
+      container.querySelectorAll('[data-usage-progress]').forEach(function(node){var item=data[node.dataset.usageProgress];node.hidden=item.limit===null;node.max=Math.max(1,item.limit||1);node.value=Math.min(item.used,node.max);});
+    }).catch(function(){});
+  }
   if (signBtn) {
     on(signBtn, 'click', function () {
       signBtn.disabled = true;
@@ -83,6 +92,7 @@
         showMessage(data.message || '签到成功');
         var score = document.querySelector('[data-user-score]');
         if (score) score.textContent = String(parseInt(score.textContent, 10) + data.acquired);
+        refreshUsage();
         var message = document.getElementById('sign-msg');
         if (message) message.textContent = '今天已签到';
       }).catch(function (error) {

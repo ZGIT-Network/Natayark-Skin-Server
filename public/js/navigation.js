@@ -56,6 +56,9 @@
       }else{
         copyContents(document.querySelector('.topbar [data-user-menu]'),next.querySelector('.topbar [data-user-menu]'));
         copyContents(document.querySelector('.topbar [data-locale-menu]'),next.querySelector('.topbar [data-locale-menu]'));
+        var quote=document.querySelector('.topbar [data-site-quote]'),nextQuote=next.querySelector('.topbar [data-site-quote]');
+        if(quote&&!nextQuote)quote.remove();
+        else if(!quote&&nextQuote)document.querySelector('.topbar').insertBefore(document.importNode(nextQuote,true),document.querySelector('[data-topbar-actions]'));
       }
       copyContents(document.querySelector('.page-footer'),next.querySelector('.page-footer'));
       main.replaceWith(document.importNode(fresh,true));

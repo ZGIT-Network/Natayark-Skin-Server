@@ -1,38 +1,38 @@
-<%- include('../partials/layout-user-top', { title: t('general.sharing'), pageDescription: '邀请朋友注册，双方都可以获得积分奖励。' }) %>
+<%- include('../partials/layout-user-top', { title: t('general.sharing'), pageDescription: t('sharing.page-description') }) %>
 
 <div class="grid gap-5 lg:grid-cols-3">
   <section class="card">
-    <div class="card-header"><div><h2 class="card-title">生成邀请链接</h2></div></div>
+    <div class="card-header"><div><h2 class="card-title"><%= t('sharing.create') %></h2></div></div>
     <div class="card-content">
       <div class="grid gap-2 text-sm">
         <div class="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
-          <span class="text-muted-foreground">邀请人奖励</span>
-          <strong><%= sharer %> 积分</strong>
+          <span class="text-muted-foreground"><%= t('sharing.sharer-reward') %></span>
+          <strong><%= sharer %> <%= t('score.points') %></strong>
         </div>
         <div class="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
-          <span class="text-muted-foreground">新用户奖励</span>
-          <strong><%= sharee %> 积分</strong>
+          <span class="text-muted-foreground"><%= t('sharing.new-user-reward') %></span>
+          <strong><%= sharee %> <%= t('score.points') %></strong>
         </div>
       </div>
-      <p class="mt-3 text-xs leading-relaxed text-muted-foreground">每个新账户只结算一次注册奖励。删除链接后，新注册不再获得这条链接的奖励。</p>
+      <p class="mt-3 text-xs leading-relaxed text-muted-foreground"><%= t('sharing.rule') %></p>
       <form method="post" action="/user/sharing" class="mt-4">
         <input type="hidden" name="csrf" value="<%= csrf %>">
-        <button class="btn btn-primary w-full" type="submit">生成注册链接</button>
+        <button class="btn btn-primary w-full" type="submit"><%= t('sharing.generate') %></button>
       </form>
     </div>
   </section>
 
   <section class="lg:col-span-2">
     <div class="mb-3 flex items-center justify-between gap-3">
-      <h2 class="text-base font-semibold">我的链接</h2>
-      <span class="text-xs text-muted-foreground"><%= records.length %> 条</span>
+      <h2 class="text-base font-semibold"><%= t('sharing.my-links') %></h2>
+      <span class="text-xs text-muted-foreground"><%= t('sharing.count', { count: records.length }) %></span>
     </div>
     <% if (!records.length) { %>
     <div class="card">
       <div class="empty-state">
-        
-        <div class="empty-state-title">还没有生成注册链接</div>
-        <div class="empty-state-text">生成后可以将链接分享给朋友。</div>
+
+        <div class="empty-state-title"><%= t('sharing.none') %></div>
+        <div class="empty-state-text"><%= t('sharing.none-help') %></div>
       </div>
     </div>
     <% } else { %>
@@ -44,12 +44,12 @@
             <a href="<%= record.url %>" class="block truncate font-mono text-xs text-foreground hover:underline"><%= record.url %></a>
             <div class="mt-1 text-xs text-muted-foreground"><%= record.created_at %></div>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" data-copy-text="<%= record.url %>">复制</button>
-          <form method="post" action="/user/sharing" data-confirm="删除这条注册链接？" data-confirm-danger>
+          <button type="button" class="btn btn-outline btn-sm" data-copy-text="<%= record.url %>"><%= t('common.copy') %></button>
+          <form method="post" action="/user/sharing" data-confirm="<%= t('sharing.delete-confirm') %>" data-confirm-danger>
             <input type="hidden" name="csrf" value="<%= csrf %>">
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<%= record.id %>">
-            <button type="submit" class="btn btn-ghost btn-sm text-destructive hover:bg-destructive/10 hover:text-destructive">删除</button>
+            <button type="submit" class="btn btn-ghost btn-sm text-destructive hover:bg-destructive/10 hover:text-destructive"><%= t('common.delete') %></button>
           </form>
         </div>
       </div>

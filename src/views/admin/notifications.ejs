@@ -1,4 +1,4 @@
-<%- include('../partials/layout-user-top', { title: '发送站内通知', scope:'admin', pageDescription: '向指定用户或用户组发送站内消息。' }) %>
+<%- include('../partials/layout-user-top', { title: t('admin.notifications-title'), scope:'admin', pageDescription: t('admin.notifications-description') }) %>
 <div class="editor-layout"><section class="card"><div class="card-header"><div><h2 class="card-title">新通知</h2><p class="card-description">发送后，接收人可以在站内通知中查看。</p></div></div><form class="card-content space-y-5" data-action="send-notification">
   <label class="field"><span class="label">接收对象</span><span class="select-wrap"><select class="select" name="receiver"><option value="uid">指定 UID</option><option value="email">指定邮箱</option><option value="normal">所有普通用户</option><option value="all">全站用户</option></select></span></label>
   <label class="field" data-recipient="uid"><span class="label">用户 UID</span><input class="input" name="uid" type="number" min="1" placeholder="例如 123"></label>

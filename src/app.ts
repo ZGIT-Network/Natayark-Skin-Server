@@ -101,6 +101,8 @@ await app.register(staticFiles, {
   prefix: '/vendor/',
   decorateReply: true,
 });
+// The legacy one-segment player route otherwise captures this static asset.
+app.get('/favicon.ico', (_request, reply) => reply.sendFile('favicon.ico', path.join(ROOT_DIR, 'public')));
 
 await app.register(view, {
   engine: { ejs },
@@ -127,8 +129,8 @@ app.addHook('onRequest', async (request, reply) => {
   (request as any).checkCsrf = (token?: string) => checkCsrf(request, token ?? String((request.body as any)?._token || request.headers['x-csrf-token'] || ''));
   (request as any).setSession = (uid: number,remember?:boolean) => setSessionCookie(reply, uid,remember);
   (request as any).clearSession = () => clearSessionCookie(reply, request);
-  (request as any).t = (key: string) => {
-    return translate(requestLocale(request), key);
+  (request as any).t = (key: string, values?: Record<string, string | number>) => {
+    return translate(requestLocale(request), key, values);
   };
   reply.header('X-Powered-By', 'Natayark SkinServer');
 });

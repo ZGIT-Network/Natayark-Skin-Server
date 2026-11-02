@@ -1,3 +1,3 @@
-<%- include('../partials/layout-auth-top',{authTitle:'补填邮箱',authSubtitle:'为你的账户绑定一个可用的邮箱。'}) %>
-<form action="/auth/bind" method="post" class="space-y-4"><input type="hidden" name="csrf" value="<%= csrf %>"><label class="field"><span class="label">邮箱地址</span><input class="input" name="email" type="email" maxlength="100" required autocomplete="email" placeholder="you@example.com"><span class="field-hint">验证新邮箱后才会保存，可用于账户通知和密码找回。</span></label><button class="btn btn-primary w-full" type="submit">发送验证邮件</button></form>
+<%- include('../partials/layout-auth-top',{authTitle:t('auth.bind-title'),authSubtitle:t('auth.bind-subtitle')}) %>
+<form action="/auth/bind" method="post" class="space-y-4"><input type="hidden" name="csrf" value="<%= csrf %>"><label class="field"><span class="label"><%= t('auth.email-address') %></span><input class="input" name="email" type="email" maxlength="100" required autocomplete="email" placeholder="you@example.com"><span class="field-hint"><%= t('auth.bind-help') %></span></label><button class="btn btn-primary w-full" type="submit"><%= t('common.send-verification') %></button></form>
 <%- include('../partials/layout-auth-bottom') %>

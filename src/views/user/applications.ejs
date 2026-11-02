@@ -1,24 +1,24 @@
-<%- include('../partials/layout-user-top', { title: t('general.oauth-manage'), pageDescription: '注册并管理 OAuth / Yggdrasil Connect 客户端。' }) %>
+<%- include('../partials/layout-user-top', { title: t('general.oauth-manage'), pageDescription: t('applications.page-description') }) %>
 
 <div class="grid gap-5 lg:grid-cols-3">
   <section class="card lg:col-span-2">
     <div class="card-header">
       <div>
-        <h2 class="card-title">我的应用</h2>
-        <p class="card-description">共 <%= clients.length %> 个应用</p>
+        <h2 class="card-title"><%= t('applications.my-apps') %></h2>
+        <p class="card-description"><%= t('applications.count', { count: clients.length }) %></p>
       </div>
     </div>
     <% if (clients.length === 0) { %>
     <div class="empty-state">
-      
-      <div class="empty-state-title">还没有注册应用</div>
-      <div class="empty-state-text">使用右侧表单注册第一个 OAuth 客户端。</div>
+
+      <div class="empty-state-title"><%= t('applications.none') %></div>
+      <div class="empty-state-text"><%= t('applications.none-help') %></div>
     </div>
     <% } else { %>
     <div class="table-wrap">
       <table class="table">
         <thead>
-          <tr><th>名称 / Client ID</th><th>Client Secret</th><th>回调 URI</th><th class="text-right">操作</th></tr>
+          <tr><th><%= t('applications.name-id') %></th><th><%= t('applications.secret') %></th><th><%= t('applications.redirect') %></th><th class="text-right"><%= t('common.actions') %></th></tr>
         </thead>
         <tbody>
           <% for (const client of clients) { %>
@@ -30,19 +30,19 @@
             <td>
               <% if (client.secret) { %>
               <details class="group">
-                <summary class="cursor-pointer text-xs font-medium text-brand-strong hover:underline dark:text-brand">显示密钥</summary>
+                <summary class="cursor-pointer text-xs font-medium text-brand-strong hover:underline dark:text-brand"><%= t('applications.show-secret') %></summary>
                 <div class="mt-1 flex items-center gap-1">
                   <code class="max-w-40 truncate text-[0.7rem] text-muted-foreground"><%= client.secret %></code>
-                  <button type="button" class="btn btn-ghost btn-icon btn-xs" data-copy-text="<%= client.secret %>" aria-label="复制密钥"><%- icon('copy') %></button>
+                  <button type="button" class="btn btn-ghost btn-icon btn-xs" data-copy-text="<%= client.secret %>" aria-label="<%= t('applications.copy-secret') %>"><%- icon('copy') %></button>
                 </div>
               </details>
               <% } else { %>
-              <span class="badge badge-outline">公共客户端</span>
+              <span class="badge badge-outline"><%= t('applications.public-client') %></span>
               <% } %>
             </td>
             <td><code class="text-xs text-muted-foreground"><%= client.redirect || '—' %></code></td>
             <td class="text-right">
-              <button type="button" class="btn btn-ghost btn-sm text-destructive hover:bg-destructive/10 hover:text-destructive" data-revoke-client="<%= client.id %>">撤销</button>
+              <button type="button" class="btn btn-ghost btn-sm text-destructive hover:bg-destructive/10 hover:text-destructive" data-revoke-client="<%= client.id %>"><%= t('applications.revoke') %></button>
             </td>
           </tr>
           <% } %>
@@ -53,39 +53,39 @@
   </section>
 
   <section class="card">
-    <div class="card-header"><div><h2 class="card-title">注册应用</h2></div></div>
+    <div class="card-header"><div><h2 class="card-title"><%= t('applications.create') %></h2></div></div>
     <div class="card-content">
       <form id="create-client" class="grid gap-4">
         <label class="field">
-          <span class="label">应用名称</span>
+          <span class="label"><%= t('applications.app-name') %></span>
           <input class="input" name="name" required maxlength="100">
         </label>
         <label class="field">
-          <span class="label">回调 URI</span>
+          <span class="label"><%= t('applications.redirect') %></span>
           <textarea class="textarea" name="redirect" required rows="3" placeholder="https://example.com/callback"></textarea>
-          <span class="field-hint">一行一个 URI。HTTP 仅允许本机回调，精确匹配已注册地址。</span>
+          <span class="field-hint"><%= t('applications.redirect-help') %></span>
         </label>
         <label class="checkbox-row">
           <input type="checkbox" class="checkbox" id="public_client" name="public_client" value="1">
-          <span>公共客户端（无 Client Secret）</span>
+          <span><%= t('applications.public-client-label') %></span>
         </label>
-        <button class="btn btn-primary" type="submit">注册应用</button>
+        <button class="btn btn-primary" type="submit"><%= t('applications.register') %></button>
         <p id="client-message" class="text-sm text-destructive" role="status"></p>
       </form>
     </div>
   </section>
 </div>
 
-<section class="card mt-5"><div class="card-header"><div><h2 class="card-title">个人访问令牌</h2><p class="card-description">为自己使用的脚本授权，按需选择权限。</p></div></div><form class="card-content space-y-4" id="create-personal-token"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><% for (const scope of availableScopes) { %><label class="checkbox-row"><input class="checkbox" type="checkbox" name="scopes" value="<%= scope.id %>"><span><%= scope.description %></span></label><% } %></div><button class="btn btn-outline" type="submit"><%- icon('key-round') %>创建令牌</button><div class="space-y-2" data-token-result hidden><label class="field"><span class="label">新访问令牌</span><textarea class="textarea font-mono text-xs" rows="4" readonly data-new-token></textarea><span class="field-hint">仅在本次创建后显示。请妥善保存，离开页面后会清空。</span></label><button type="button" class="btn btn-outline btn-sm" data-copy-new-token><%- icon('copy') %>复制令牌</button></div></form></section>
+<section class="card mt-5"><div class="card-header"><div><h2 class="card-title"><%= t('applications.personal-tokens') %></h2><p class="card-description"><%= t('applications.personal-tokens-help') %></p></div></div><form class="card-content space-y-4" id="create-personal-token"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><% for (const scope of availableScopes) { %><label class="checkbox-row"><input class="checkbox" type="checkbox" name="scopes" value="<%= scope.id %>"><span><%= scope.description %></span></label><% } %></div><button class="btn btn-outline" type="submit"><%- icon('key-round') %><%= t('applications.create-token') %></button><div class="space-y-2" data-token-result hidden><label class="field"><span class="label"><%= t('applications.new-token') %></span><textarea class="textarea font-mono text-xs" rows="4" readonly data-new-token></textarea><span class="field-hint"><%= t('applications.token-help') %></span></label><button type="button" class="btn btn-outline btn-sm" data-copy-new-token><%- icon('copy') %><%= t('applications.copy-token') %></button></div></form></section>
 <% if (tokens && tokens.length) { %>
 <div class="mt-5">
   <div class="mb-3 flex items-center justify-between gap-3">
-    <h2 class="text-base font-semibold">个人访问令牌</h2>
+    <h2 class="text-base font-semibold"><%= t('applications.personal-tokens') %></h2>
   </div>
   <div class="card overflow-hidden">
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>标识</th><th>权限范围</th><th>创建时间</th><th>过期时间</th><th>操作</th></tr></thead>
+        <thead><tr><th><%= t('applications.identifier') %></th><th><%= t('common.scopes') %></th><th><%= t('applications.created-at') %></th><th><%= t('applications.expires-at') %></th><th><%= t('common.actions') %></th></tr></thead>
         <tbody>
           <% for (const token of tokens) { %>
           <tr>
@@ -93,7 +93,7 @@
             <td><code class="text-xs text-muted-foreground"><%= (token.scopes || []).join(' ') %></code></td>
             <td class="text-muted-foreground"><%= token.created_at %></td>
             <td class="text-muted-foreground"><%= token.expires_at || '—' %></td>
-            <td><button class="btn btn-outline btn-xs" data-revoke-token="<%= token.id %>">撤销</button></td>
+            <td><button class="btn btn-outline btn-xs" data-revoke-token="<%= token.id %>"><%= t('connections.revoke') %></button></td>
           </tr>
           <% } %>
         </tbody>

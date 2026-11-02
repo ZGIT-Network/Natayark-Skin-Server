@@ -21,7 +21,7 @@ import {verifyCaptcha} from '../src/services/captcha.js';
 
 test('original enabled native plugins: batch import, quote, menus, proxy and CDN callbacks',{skip:!config.db.tablePrefix.startsWith('dev_')},async t=>{
  const suffix=crypto.randomBytes(4).toString('hex'),name='Native'+suffix,email=name+'@example.test';
- const keys=['plugins_enabled','hitokoto_api','hitokoto_fallback','hitokoto_cache_seconds','recaptcha_sitekey','recaptcha_secretkey','recaptcha_verify_url','recaptcha_invisible'];
+ const keys=['plugins_enabled','local_login_enabled','hitokoto_api','hitokoto_fallback','hitokoto_cache_seconds','recaptcha_sitekey','recaptcha_secretkey','recaptcha_verify_url','recaptcha_invisible'];
  const before=await query<any>(`SELECT * FROM options WHERE option_name IN (${keys.map(()=>'?')})`,keys);
  const savedProxy=config.trustProxy,envKeys=['ALICDN_SITE_BASE_URL','ALICDN_ACCESSKEY_ID','ALICDN_ACCESSKEY_SECRET','ALICDN_API_ENDPOINT'];
  const savedEnv=Object.fromEntries(envKeys.map(key=>[key,process.env[key]]));
@@ -44,6 +44,7 @@ test('original enabled native plugins: batch import, quote, menus, proxy and CDN
  config.trustProxy=parseTrustProxy('loopback,192.0.2.0/24');
  const app=await createApp();app.get('/__native-test/ip',request=>({ip:request.ip}));
  try{
+  await setOption('local_login_enabled','true');
   for(const [key,value]of Object.entries({plugins_enabled:JSON.stringify(['single-player-limit','share-registration-link','gravatar','204-for-unexisted-players','hide-advanced-menu','hitokoto','refresh-ali-cdn','usm-api','legacy-api','yggdrasil-api'].map(name=>({name,version:'fixture'}))),hitokoto_api:base+'/quote',hitokoto_fallback:'备用一言',hitokoto_cache_seconds:'60'}))await setOption(key,value);
   const registered=await registerUser({email,player_name:name,password:'native-fixture-password',verified:true});assert.ok(registered.ok);uid=registered.user.uid;
   let cookie='';await setSessionCookie({setCookie(key:string,value:string){cookie=key+'='+value;}} as any,uid);
@@ -51,7 +52,10 @@ test('original enabled native plugins: batch import, quote, menus, proxy and CDN
   await t.test('enabled menu and quote cache/fallback honor actual object-array settings',async()=>{
    const page=await app.inject({url:'/user',headers});assert.equal(page.statusCode,200);
    const sidebar=page.body.slice(page.body.indexOf('<aside class="sidebar"'),page.body.indexOf('</aside>'));
-   assert.ok(!sidebar.includes('href="/user/applications"'));assert.match(page.body,/data-site-quote/);
+   assert.ok(!sidebar.includes('href="/user/applications"'));
+   const topbar=page.body.slice(page.body.indexOf('<header class="topbar">'),page.body.indexOf('</header>'));
+   const content=page.body.slice(page.body.indexOf('<main class="page"'),page.body.indexOf('</main>'));
+   assert.match(topbar,/data-site-quote/);assert.doesNotMatch(content,/data-site-quote/);
    const quote=await app.inject({url:'/user/quote',headers});assert.equal(quote.json().text,'本地验收一言');assert.equal(quote.json().stale,false);
    await app.inject({url:'/user/quote',headers});assert.equal(quoteCalls,1);
    const now=Date.now;try{Date.now=()=>now()+61000;quoteFail=true;const stale=await app.inject({url:'/user/quote',headers});assert.equal(stale.json().text,'本地验收一言');assert.equal(stale.json().stale,true);}finally{Date.now=now;}
@@ -81,7 +85,7 @@ test('original enabled native plugins: batch import, quote, menus, proxy and CDN
    const csrf=/name="csrf" value="([^"]+)"/.exec(page.body)![1];
    const save=await app.inject({method:'POST',url:'/admin/settings',headers,payload:{csrf,recaptcha_sitekey:'fixture-site',recaptcha_secretkey:''}});assert.equal(save.statusCode,302);assert.equal(await getOption('recaptcha_secretkey'),'fixture-secret');
    const invisible=await app.inject({method:'POST',url:'/admin/settings',headers,payload:{csrf,recaptcha_sitekey:'fixture-site',recaptcha_secretkey:'',recaptcha_invisible:'true'}});assert.equal(invisible.statusCode,302);assert.equal(await getOption('recaptcha_invisible'),'true');
-   const register=await app.inject('/auth/register');assert.match(register.body,/data-invisible="true"/);assert.match(register.body,/onload=natayarkCaptchaReady/);assert.ok(register.body.indexOf('src="/js/captcha.js"')<register.body.indexOf('src="https://www.recaptcha.net'));
+   const register=await app.inject('/auth/register');assert.equal(register.statusCode,200);assert.match(register.body,/data-invisible="true"/);assert.match(register.body,/onload=natayarkCaptchaReady/);assert.ok(register.body.indexOf('src="/js/captcha.js"')<register.body.indexOf('src="https://www.recaptcha.net'));
    const checkbox=await app.inject({method:'POST',url:'/admin/settings',headers,payload:{csrf,recaptcha_sitekey:'fixture-site',recaptcha_secretkey:'',recaptcha_invisible:'false'}});assert.equal(checkbox.statusCode,302);assert.match((await app.inject('/auth/register')).body,/data-invisible="false"/);
    await setOption('recaptcha_secretkey','');await setOption('recaptcha_sitekey','');
   });

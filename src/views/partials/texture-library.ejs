@@ -7,7 +7,7 @@
   };
 %>
 <div class="library-heading">
-  <p><%= total %> 件材质<% if (filters.uploader) { %> · 上传者 UID <%= filters.uploader %> <a href="<%= linkTo(1, {uploader:''}) %>">取消筛选</a><% } %></p>
+  <p><%= t('skinlib.items', { total }) %><% if (filters.uploader) { %> · <%= t('skinlib.filter-uploader', { uid: filters.uploader }) %> <a href="<%= linkTo(1, {uploader:''}) %>"><%= t('skinlib.clear-uploader') %></a><% } %></p>
   <a href="/skinlib/upload" class="btn btn-primary"><%- icon('upload') %><%= t('skinlib.upload') %></a>
 </div>
 
@@ -16,47 +16,47 @@
     <form method="get" action="<%= libraryBase %>" class="library-search">
       <input type="hidden" name="sort" value="<%= filters.sort %>">
       <% if (filters.uploader) { %><input type="hidden" name="uploader" value="<%= filters.uploader %>"><% } %>
-      <label class="sr-only" for="library-type">材质类型</label>
-      <select class="select" id="library-type" name="type" aria-label="材质类型">
-        <% for (const [key,label] of [['','全部'],['skin','皮肤'],['steve','Steve'],['alex','Alex'],['cape','披风']]) { %>
-        <option value="<%= key %>" <%= filters.type === key ? 'selected' : '' %>><%= label %></option>
+      <label class="sr-only" for="library-type"><%= t('skinlib.type-label') %></label>
+      <select class="select" id="library-type" name="type" aria-label="<%= t('skinlib.type-label') %>">
+        <% for (const [key,labelKey] of [['','common.all'],['skin','skinlib.type-skin'],['steve','skinlib.steve'],['alex','skinlib.alex'],['cape','skinlib.type-cape']]) { %>
+        <option value="<%= key %>" <%= filters.type === key ? 'selected' : '' %>><%= t(labelKey) %></option>
         <% } %>
       </select>
-      <input class="input" name="keyword" value="<%= filters.keyword %>" placeholder="搜索" aria-label="搜索材质">
-      <button type="submit" class="btn btn-primary btn-icon" aria-label="搜索"><%- icon('search') %></button>
+      <input class="input" name="keyword" value="<%= filters.keyword %>" placeholder="<%= t('skinlib.search-placeholder') %>" aria-label="<%= t('skinlib.search-label') %>">
+      <button type="submit" class="btn btn-primary btn-icon" aria-label="<%= t('common.search') %>"><%- icon('search') %></button>
       <% if (user) { %>
-      <select class="select library-visibility" name="status" aria-label="可见性">
-        <% for (const [key,label] of [['','全部可见'],['public','公开'],['private','私有']]) { %><option value="<%= key %>" <%= filters.status === key ? 'selected' : '' %>><%= label %></option><% } %>
+      <select class="select library-visibility" name="status" aria-label="<%= t('skinlib.visibility') %>">
+        <% for (const [key,labelKey] of [['','skinlib.all-visibility'],['public','common.public'],['private','common.private']]) { %><option value="<%= key %>" <%= filters.status === key ? 'selected' : '' %>><%= t(labelKey) %></option><% } %>
       </select>
       <% } %>
     </form>
-    <nav class="library-sort" aria-label="材质排序">
-      <a href="<%= linkTo(1, {sort:'likes'}) %>" class="<%= filters.sort === 'likes' ? 'active' : '' %>" <%- filters.sort === 'likes' ? 'aria-current="true"' : '' %>>最多收藏</a>
-      <a href="<%= linkTo(1, {sort:'time'}) %>" class="<%= filters.sort === 'time' ? 'active' : '' %>" <%- filters.sort === 'time' ? 'aria-current="true"' : '' %>>最新上传</a>
-      <a href="<%= libraryBase %>">清除筛选</a>
+    <nav class="library-sort" aria-label="<%= t('skinlib.sort') %>">
+      <a href="<%= linkTo(1, {sort:'likes'}) %>" class="<%= filters.sort === 'likes' ? 'active' : '' %>" <%- filters.sort === 'likes' ? 'aria-current="true"' : '' %>><%= t('skinlib.sort-likes') %></a>
+      <a href="<%= linkTo(1, {sort:'time'}) %>" class="<%= filters.sort === 'time' ? 'active' : '' %>" <%- filters.sort === 'time' ? 'aria-current="true"' : '' %>><%= t('skinlib.sort-time') %></a>
+      <a href="<%= libraryBase %>"><%= t('skinlib.clear') %></a>
     </nav>
   </div>
 
   <% if (!items.length) { %>
-  <div class="empty-state"><div class="empty-state-title">没有符合条件的材质</div><div class="empty-state-text">调整搜索或筛选条件后重试。</div></div>
+  <div class="empty-state"><div class="empty-state-title"><%= t('skinlib.no-results') %></div><div class="empty-state-text"><%= t('skinlib.no-results-help') %></div></div>
   <% } else { %>
   <div class="library-grid">
     <% for (const [index,item] of items.entries()) { %>
     <article class="library-card" data-texture-id="<%= item.tid %>">
-      <a href="/skinlib/show/<%= item.tid %>" class="library-preview" aria-label="预览 <%= item.name %>" data-image-state="loading" aria-busy="true">
+      <a href="/skinlib/show/<%= item.tid %>" class="library-preview" aria-label="<%= t('skinlib.preview-label', { name: item.name }) %>" data-image-state="loading" aria-busy="true">
         <span class="image-skeleton" aria-hidden="true"></span>
-        <img src="/preview/<%= item.tid %>?v=4&model=<%= item.type %>&height=320" alt="<%= item.name %> 的正面与背面预览" <%- index < 4 ? 'fetchpriority="high"' : 'loading="lazy"' %> decoding="async">
-        <% if (!item.public) { %><span class="library-private">私有</span><% } %>
+        <img src="/preview/<%= item.tid %>?v=4&model=<%= item.type %>&height=320" alt="<%= t('skinlib.preview-alt', { name: item.name }) %>" <%- index < 4 ? 'fetchpriority="high"' : 'loading="lazy"' %> decoding="async">
+        <% if (!item.public) { %><span class="library-private"><%= t('skinlib.private') %></span><% } %>
       </a>
       <div class="library-caption">
         <a href="/skinlib/show/<%= item.tid %>" class="library-name" title="<%= item.name %>"><%= item.name %></a>
         <div class="library-meta">
-          <span class="library-model"><%= item.type === 'cape' ? '披风' : item.type === 'alex' ? 'Alex' : 'Steve' %></span>
-          <a class="library-uploader" href="<%= linkTo(1, {uploader:String(item.uploader)}) %>" title="查看此用户上传的材质"><%= item.nickname || ('UID ' + item.uploader) %></a>
-          <span class="library-likes" aria-label="<%= item.likes %> 次收藏"><%- icon('heart') %><%= item.likes %></span>
+          <span class="library-model"><%= item.type === 'cape' ? t('skinlib.type-cape') : item.type === 'alex' ? 'Alex' : 'Steve' %></span>
+          <a class="library-uploader" href="<%= linkTo(1, {uploader:String(item.uploader)}) %>" title="<%= t('skinlib.view-uploads') %>"><%= item.nickname || ('UID ' + item.uploader) %></a>
+          <span class="library-likes" aria-label="<%= t('skinlib.likes-label', { count: item.likes }) %>"><%- icon('heart') %><%= item.likes %></span>
         </div>
         <% if (adminMode) { %>
-        <div class="library-admin-actions"><code>#<%= item.tid %></code><a href="/skinlib/show/<%= item.tid %>" class="btn btn-ghost btn-xs"><%- icon('pencil') %>编辑</a><button type="button" class="btn btn-ghost btn-icon btn-xs text-destructive" data-action="admin-delete-texture" data-tid="<%= item.tid %>" aria-label="删除 <%= item.name %>"><%- icon('trash-2') %></button></div>
+        <div class="library-admin-actions"><code>#<%= item.tid %></code><a href="/skinlib/show/<%= item.tid %>" class="btn btn-ghost btn-xs"><%- icon('pencil') %><%= t('skinlib.edit') %></a><button type="button" class="btn btn-ghost btn-icon btn-xs text-destructive" data-action="admin-delete-texture" data-tid="<%= item.tid %>" aria-label="<%= t('skinlib.delete-label', { name: item.name }) %>"><%- icon('trash-2') %></button></div>
         <% } %>
       </div>
     </article>
@@ -65,9 +65,9 @@
   <% } %>
 </section>
 <% if (pages > 1) { %>
-<nav class="pagination mt-6 justify-center" aria-label="分页">
-  <% if (page > 1) { %><a class="page-link" href="<%= linkTo(page-1) %>" aria-label="上一页"><%- icon('chevron-left') %></a><% } %>
+<nav class="pagination mt-6 justify-center" aria-label="<%= t('common.pagination') %>">
+  <% if (page > 1) { %><a class="page-link" href="<%= linkTo(page-1) %>" aria-label="<%= t('skinlib.prev-page') %>"><%- icon('chevron-left') %></a><% } %>
   <% for (let number=Math.max(1,page-2);number<=Math.min(pages,page+2);number++) { %><a class="page-link <%= number === page ? 'active' : '' %>" href="<%= linkTo(number) %>" <%- number === page ? 'aria-current="page"' : '' %>><%= number %></a><% } %>
-  <% if (page < pages) { %><a class="page-link" href="<%= linkTo(page+1) %>" aria-label="下一页"><%- icon('chevron-right') %></a><% } %>
+  <% if (page < pages) { %><a class="page-link" href="<%= linkTo(page+1) %>" aria-label="<%= t('skinlib.next-page') %>"><%- icon('chevron-right') %></a><% } %>
 </nav>
 <% } %>

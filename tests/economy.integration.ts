@@ -106,6 +106,13 @@ try {
   const charged = players.find((p) => p.ok)!;
   if (charged.ok) await Promise.all([deletePlayer(charged.player), deletePlayer(charged.player)]);
   check(await score(playerOwner) === 150, 'repeated player deletion refunds once');
+  await setOption('max_players_per_user','1');
+  const limitedOwner=await user(1000);
+  const capped=await Promise.all([addPlayer(limitedOwner,'capA'+suffix),addPlayer(limitedOwner,'capB'+suffix)]);
+  check(capped.filter(result=>result.ok).length===1&&await score(limitedOwner)===900,'concurrent player creation enforces the fixed count under the account lock');
+  await setOption('max_players_per_user','2');
+  check((await addPlayer(limitedOwner,'capC'+suffix)).ok,'raising the configured limit allows the next player');
+  await setOption('max_players_per_user','0');
   await setOption('plugins_enabled', JSON.stringify({ 'single-player-limit': { version: 'fixture' } }));
   check(!(await addPlayer(playerOwner, `ecoC${suffix}`)).ok, 'single-player-limit prevents normal additions');
   const binding = await bindSinglePlayer(playerOwner, `ecoD${suffix}`);

@@ -4,7 +4,7 @@ import { hashPassword, verifyPassword } from '../src/services/cipher.js';
 import { serializeSession, parseSession, csrfToken, checkCsrf } from '../src/services/session.js';
 import { mapOAuthUser, buildAuthorizeUrl, NATAYARK_ID_PRESET, validateProvider } from '../src/services/oauth-client.js';
 import { safeAuthRedirect } from '../src/routes/auth.js';
-import { enabledPluginNames } from '../src/services/plugins.js';
+import { enabledPluginNames,configurePlugin } from '../src/services/plugins.js';
 import { compileLegacyPattern } from '../src/util.js';
 
 test('legacy plugin object arrays and PHP-delimited player rules keep their meaning',()=>{
@@ -15,6 +15,16 @@ test('legacy plugin object arrays and PHP-delimited player rules keep their mean
   assert.equal(compileLegacyPattern('/^[a-z]+$/D')?.test('abc\n'),false);
   assert.equal(compileLegacyPattern('/[invalid/'),null);
   assert.equal(compileLegacyPattern('/abc/e'),null);
+});
+
+test('single-player settings preserve other plugins and legacy version metadata',()=>{
+  const plugins=[{name:'single-player-limit',version:'3.0',enabled:false},{name:'gravatar',version:'1.0'},'oauth'];
+  const enabled=configurePlugin(plugins,'single-player-limit',true);
+  assert.deepEqual(configurePlugin(enabled,'single-player-limit',true),enabled,'Unchanged settings retain order and metadata');
+  assert.deepEqual(enabled,[plugins[1],'oauth',{name:'single-player-limit',version:'3.0',enabled:true}]);
+  assert.deepEqual(configurePlugin(enabled,'single-player-limit',false),[plugins[1],'oauth']);
+  assert.deepEqual(configurePlugin({'single-player-limit':false,oauth:{version:'1.0'}},'single-player-limit',true),{'single-player-limit':true,oauth:{version:'1.0'}});
+  assert.throws(()=>configurePlugin('broken JSON','single-player-limit',true));
 });
 
 test('all legacy digest ciphers preserve PHP vectors and reject wrong passwords', async () => {

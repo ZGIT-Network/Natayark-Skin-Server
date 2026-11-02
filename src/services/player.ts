@@ -49,6 +49,11 @@ export async function bindSinglePlayer(uid: number, name: string): Promise<AddPl
 }
 
 export const singlePlayerLimitEnabled = () => pluginEnabled('single-player-limit');
+export async function playerLimit():Promise<number|null> {
+  if(await singlePlayerLimitEnabled())return 1;
+  const limit=await getOptionInt('max_players_per_user',0);
+  return limit>0?limit:null;
+}
 
 async function createPlayer(uid: number, name: string, initialBinding: boolean): Promise<AddPlayerResult> {
   const trimmed = name.trim();
@@ -57,7 +62,8 @@ async function createPlayer(uid: number, name: string, initialBinding: boolean):
   return withTransaction<AddPlayerResult>(async () => {
     const user = await queryOne<{ score: number; permission: number }>('SELECT score, permission FROM users WHERE uid = ? FOR UPDATE', [uid]);
     if (!user || user.permission < 0) return { ok: false, reason: 'invalid_name' };
-    if (initialBinding && await countPlayersOfUser(uid) > 0) return { ok: false, reason: 'limit_reached' };
+    const count=await countPlayersOfUser(uid),limit=await playerLimit();
+    if (initialBinding && count>0 || limit!==null && count>=limit) return { ok: false, reason: 'limit_reached' };
     if (await queryOne('SELECT pid FROM players WHERE name = ? FOR UPDATE', [trimmed])) return { ok: false, reason: 'dup_name' };
     if (user.score < cost) return { ok: false, reason: 'score_not_enough' };
     const pid = await insert('INSERT INTO players (uid, name, tid_skin, tid_cape, last_modified) VALUES (?, ?, 0, 0, ?)', [uid, trimmed, nowString()]);

@@ -11,14 +11,27 @@
   <%- include('head') %>
 </head>
 <body class="auth-page" data-page-shell="auth" data-user-id="0">
+  <aside class="auth-aside">
+    <a href="/" class="brand-lockup">
+      <span class="site-wordmark"><%= typeof siteName !== 'undefined' ? siteName : '' %></span>
+    </a>
+    <div class="auth-aside-copy">
+      <p class="mono-label mb-5"><%= t('home.kind') %></p>
+      <p class="auth-aside-title"><%= typeof siteName !== 'undefined' ? siteName : '' %></p>
+      <% if (typeof siteDescription !== 'undefined' && siteDescription) { %><p class="auth-aside-description"><%= siteDescription %></p><% } %>
+    </div>
+    <div class="auth-aside-meta">Minecraft</div>
+  </aside>
+
+  <main class="auth-main">
   <div class="auth-card" data-page-content>
     <div class="auth-brand">
-      <a href="/" class="auth-brand-name"><%= typeof siteName !== 'undefined' ? siteName : 'Natayark SkinServer' %></a>
-      <%- include('theme-menu') %>
+      <a href="/" class="auth-brand-name brand-lockup"><span class="site-wordmark"><%= typeof siteName !== 'undefined' ? siteName : '' %></span></a>
+      <div class="auth-tools"><%- include('theme-menu') %><%- include('languages') %></div>
     </div>
 
-    <div class="card">
-      <div class="card-content p-6">
+    <div class="auth-panel">
+      <div class="card-content p-0">
         <div class="mb-6">
           <h1 class="auth-title"><%= __authTitle %></h1>
           <% if (__authSubtitle) { %><p class="auth-subtitle"><%= __authSubtitle %></p><% } %>

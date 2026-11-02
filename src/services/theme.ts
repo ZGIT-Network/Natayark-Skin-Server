@@ -2,16 +2,16 @@ import { getOption, loadOptions, setOption } from './option.js';
 import { withTransaction } from '../db.js';
 
 export const APPEARANCE_DEFAULTS = {
-  theme_primary: '#335cdb', theme_primary_dark: '#9bb7ff',
-  theme_background: '#f4f6fb', theme_background_dark: '#111725',
+  theme_primary: '#245c45', theme_primary_dark: '#8fc7a9',
+  theme_background: '#f3f4f1', theme_background_dark: '#111311',
   theme_default_mode: 'system', theme_radius: 'small', home_layout: 'split', home_show_recent: 'true',
 };
 export type Appearance = typeof APPEARANCE_DEFAULTS;
 export const RADIUS_PRESETS = [
   { key: 'square', name: '直角', pixels: 0 },
-  { key: 'small', name: '小圆角', pixels: 4 },
-  { key: 'medium', name: '中圆角', pixels: 8 },
-  { key: 'large', name: '大圆角', pixels: 12 },
+  { key: 'small', name: '小圆角', pixels: 2 },
+  { key: 'medium', name: '中圆角', pixels: 6 },
+  { key: 'large', name: '大圆角', pixels: 10 },
 ] as const;
 export const HOME_LAYOUTS = [
   { key: 'split', name: '分栏', description: '文字与图片并排，展示最近上传的材质。' },
@@ -20,10 +20,10 @@ export const HOME_LAYOUTS = [
   { key: 'minimal', name: '简洁', description: '以站点名称与登录入口为主，不显示大图。' },
 ] as const;
 export const PALETTES = [
-  { name: '海蓝', light: '#335cdb', dark: '#9bb7ff', background: '#f4f6fb', night: '#111725' },
-  { name: '松绿', light: '#16745b', dark: '#7ed9b2', background: '#f2f7f4', night: '#111f1b' },
-  { name: '赤陶', light: '#b34332', dark: '#f2ad94', background: '#faf4ef', night: '#251a17' },
-  { name: '紫罗兰', light: '#7847bf', dark: '#c9adff', background: '#f7f3fc', night: '#1c1628' },
+  { name: '松绿', light: '#245c45', dark: '#8fc7a9', background: '#f3f4f1', night: '#111311' },
+  { name: '石板', light: '#3f4c5a', dark: '#a9bccf', background: '#f2f3f5', night: '#12161a' },
+  { name: '赤陶', light: '#a44737', dark: '#e0a18f', background: '#f6f2ed', night: '#1d1614' },
+  { name: '橄榄', light: '#5a5f2f', dark: '#c4c98a', background: '#f4f4ec', night: '#17180f' },
 ];
 export function isColor(value: unknown): value is string { return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value); }
 export function isThemeMode(value: unknown): value is 'system' | 'light' | 'dark' { return ['system', 'light', 'dark'].includes(String(value)); }

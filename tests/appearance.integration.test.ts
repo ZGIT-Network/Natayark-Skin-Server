@@ -46,7 +46,7 @@ test('admin appearance: validated persistence, homepage layouts and public isola
       assert.equal(page.statusCode, 200);
       assert.match(page.body, /--primary:#7847bf/);
       assert.match(page.body, /--primary:#c9adff/);
-      assert.match(page.body, /--radius:12px/);
+      assert.match(page.body, /--radius:10px/);
       assert.equal(await getOption('theme_radius'), 'large');
       assert.match(page.body, /home-page home-minimal/);
       assert.doesNotMatch(page.body, /id="recent-title"/);
@@ -65,7 +65,15 @@ test('admin appearance: validated persistence, homepage layouts and public isola
       const reloaded = await app.inject({url:'/admin/settings',headers:{cookie}});
       assert.match(reloaded.body, /value="#7847bf"/);
       assert.match(reloaded.body, /value="minimal" checked/);
-      assert.match(reloaded.body, /value="large" data-radius="12" selected/);
+      assert.match(reloaded.body, /value="large" data-radius="10" selected/);
+    });
+    await t.test('saved colors from the previous palette remain configurable', async () => {
+      const saved = await post({theme_primary:'#335cdb',theme_primary_dark:'#9bb7ff',theme_background:'#f4f6fb',theme_background_dark:'#111725'});
+      assert.equal(saved.headers.location, '/admin/settings?saved=1#appearance');
+      const page = await app.inject('/');
+      for (const color of ['--primary:#335cdb','--primary:#9bb7ff','--background:#f4f6fb','--background:#111725']) assert.ok(page.body.includes(color), color);
+      const reloaded = await app.inject({url:'/admin/settings',headers:{cookie}});
+      for (const color of ['#335cdb','#9bb7ff','#f4f6fb','#111725']) assert.ok(reloaded.body.includes('value="' + color + '"'), color);
     });
     await t.test('operator copyright and project attribution coexist on every page shell', async () => {
       await setOption('copyright_text', 'Operator copyright fixture');

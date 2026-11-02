@@ -34,7 +34,10 @@ export const config = {
   port: envInt('PORT', 3000),
   host: envStr('HOST', '0.0.0.0'),
   appKey: envStr('APP_KEY', 'dev-insecure-key'),
-  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  // Loopback proxies (nginx on the same host) are trusted by default so
+  // request.ip reflects X-Forwarded-For instead of 127.0.0.1. Set TRUST_PROXY
+  // to the reverse proxy's exact address/CIDR when it lives elsewhere.
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY ?? 'loopback'),
   publicOrigin: envStr('PUBLIC_ORIGIN').replace(/\/$/, ''),
   oidcIssuer: envStr('OIDC_ISSUER').replace(/\/$/, ''),
   legacyDir: envStr('LEGACY_DIR'),

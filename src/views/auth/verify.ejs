@@ -1,5 +1,5 @@
-<%- include('../partials/layout-auth-top',{authTitle:'验证邮箱',authSubtitle:'完成邮箱验证后即可使用站点的全部账户功能。'}) %>
-<p class="mb-5 text-sm text-muted-foreground">当前邮箱：<strong class="text-foreground"><%= user.email %></strong></p>
-<% if (user.verified) { %><p class="mb-5 text-sm">此邮箱已完成验证。</p><% } else { %><form method="post" action="/user/email-verification" class="mb-4"><input type="hidden" name="csrf" value="<%= csrf %>"><button class="btn btn-primary w-full" type="submit">发送验证邮件</button></form><% } %>
-<a href="/user/profile" class="btn btn-outline w-full">返回个人资料</a>
+<%- include('../partials/layout-auth-top',{authTitle:t('auth.verify-title'),authSubtitle:t('auth.verify-subtitle')}) %>
+<p class="mb-5 text-sm text-muted-foreground"><%= t('auth.current-email') %>：<strong class="text-foreground"><%= user.email %></strong></p>
+<% if (user.verified) { %><p class="mb-5 text-sm"><%= t('auth.email-verified') %></p><% } else { %><form method="post" action="/user/email-verification" class="mb-4"><input type="hidden" name="csrf" value="<%= csrf %>"><button class="btn btn-primary w-full" type="submit"><%= t('common.send-verification') %></button></form><% } %>
+<a href="/user/profile" class="btn btn-outline w-full"><%= t('general.profile') %></a>
 <%- include('../partials/layout-auth-bottom') %>

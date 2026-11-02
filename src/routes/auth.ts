@@ -247,6 +247,26 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
     const legacy=remote.email&&await findUserByEmail(remote.email);
     if(legacy){
       if(legacy.permission<0)return failPage(reply,base,'账户不可用',403);
+      // A missing local password does not prove ownership. Only a provider's
+      // verified email assertion can skip the original mailbox challenge.
+      if(remote.emailVerified&&!String(legacy.password||'')){
+        try{
+          const linkedUid=await transaction(async conn=>{
+            const [rows]=await conn.query<any[]>('SELECT uid,email,permission,password,verified FROM users WHERE uid=? FOR UPDATE',[legacy.uid]);
+            const user=rows[0];
+            if(!user||user.permission<0||user.email.trim().toLowerCase()!==remote.email)throw new Error('原账户邮箱已变化，请重新授权');
+            if(String(user.password||''))throw new Error('账户登录方式已变化，请重新授权');
+            const existing=await findIdentity(key,remote.id);
+            if(existing&&existing.user_id!==user.uid)throw new Error('该第三方身份已绑定其他账户');
+            if(!existing&&!await linkIdentity(user.uid,key,remote))throw new Error('此账户已有该提供方的其他绑定，请使用原登录方式');
+            if(!user.verified)await conn.query('UPDATE users SET verified=1 WHERE uid=?',[user.uid]);
+            return user.uid as number;
+          });
+          await clearSessionCookie(reply,request);
+          await request.setSession(linkedUid);
+          return reply.redirect(safeAuthRedirect(flow.redirect));
+        }catch(error:any){return failPage(reply,base,error.message||'账户衔接失败，请重新授权',409);}
+      }
       // Old PHP retained only the email. Require independent proof before establishing a stable subject binding.
       const token=await createOAuthFlow(request.session!.sid,'legacy-link',{provider:key,redirect:flow.redirect,remote,email:legacy.email.trim().toLowerCase(),legacyUid:legacy.uid},3600);
       return reply.redirect('/auth/oauth/migrate?flow='+encodeURIComponent(token));
@@ -343,6 +363,7 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
           if(!rows.length)return null;
           const result=await completeLegacyOAuth(payload.flow,request.session!.sid);
           if(!result||result.uid!==row.user_id)throw new Error('账户衔接会话已失效，请重新授权');
+          await conn.query('UPDATE users SET verified=1 WHERE uid=? AND verified=0',[row.user_id]);
           await conn.query('DELETE FROM mcn_email_challenges WHERE token_hash=?',[tokenHash(token)]);return result;
         });
         if(!linked)return failPage(reply,base,'验证链接已使用或过期');

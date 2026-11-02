@@ -474,7 +474,26 @@
       var nameTarget = input.getAttribute('data-file-name') ? qs(input.getAttribute('data-file-name')) : null;
       var preview = input.getAttribute('data-file-preview') ? qs(input.getAttribute('data-file-preview')) : null;
       var previewPanel = input.getAttribute('data-file-preview-panel') ? qs(input.getAttribute('data-file-preview-panel')) : null;
+      var dropzone=input.closest('[data-file-dropzone]'),dropError=dropzone&&dropzone.parentElement.querySelector('[data-file-drop-error]'),dragDepth=0;
+      function fileError(text){if(dropError){dropError.textContent=text||'';dropError.hidden=!text;}}
+      if(dropzone){
+        on(dropzone,'dragenter',function(event){if(!event.dataTransfer||!Array.from(event.dataTransfer.types).includes('Files'))return;event.preventDefault();dragDepth++;dropzone.classList.add('is-dragging');});
+        on(dropzone,'dragover',function(event){if(!event.dataTransfer||!Array.from(event.dataTransfer.types).includes('Files'))return;event.preventDefault();event.dataTransfer.dropEffect='copy';});
+        on(dropzone,'dragleave',function(event){event.preventDefault();if(--dragDepth<=0){dragDepth=0;dropzone.classList.remove('is-dragging');}});
+        on(dropzone,'drop',function(event){
+          event.preventDefault();dragDepth=0;dropzone.classList.remove('is-dragging');
+          if(input.disabled||!event.dataTransfer)return;
+          var files=event.dataTransfer.files;
+          if(files.length!==1){fileError(dropzone.dataset.dropCountError);return;}
+          var file=files[0];
+          if(!/\.png$/i.test(file.name)&&file.type!=='image/png'){fileError(dropzone.dataset.dropTypeError);return;}
+          if(file.size>Number(dropzone.dataset.maxFileSize)){fileError(dropzone.dataset.dropSizeError);return;}
+          try{var transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));}
+          catch(error){fileError(document.documentElement.lang==='en'?'Please click to choose the file in this browser.':'此浏览器请点击选择文件。');}
+        });
+      }
       on(input, 'change', function () {
+        fileError('');
         var file = input.files && input.files[0];
         if (nameTarget) nameTarget.textContent = file ? file.name : '';
         if (previewPanel) previewPanel.hidden = !file;
@@ -511,13 +530,44 @@
   }
 
   /* --- Confirm forms --------------------------------------------------------- */
+  function initLogout() {
+    on(document, 'click', async function (event) {
+      var link = event.target.closest('a[data-logout-confirm]');
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (link.dataset.confirming === 'true') return;
+      link.dataset.confirming = 'true';
+      var scope = listeners.signal;
+      try {
+        var confirmed = await confirmDialog({
+          title: link.dataset.confirmTitle,
+          description: link.dataset.confirm,
+          confirmText: link.dataset.confirmText,
+          cancelText: link.dataset.cancelText,
+        });
+        if (!confirmed || scope.aborted || !link.isConnected) return;
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = link.href;
+        form.hidden = true;
+        var csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrf';
+        csrf.value = window.__CSRF || '';
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+      } finally { delete link.dataset.confirming; }
+    });
+  }
+
   function initConfirmForms() {
     on(document, 'submit', function (event) {
       var form = event.target.closest('form[data-confirm]');
       if (!form || form.dataset.confirmed === '1') return;
       event.preventDefault();
       var message = form.getAttribute('data-confirm') || '确认执行此操作？';
-      confirmDialog({ title: '确认操作', description: message, danger: form.hasAttribute('data-confirm-danger'), confirmText: form.getAttribute('data-confirm-text') || '确认' }).then(function (ok) {
+      confirmDialog({ title: form.getAttribute('data-confirm-title') || '确认操作', description: message, danger: form.hasAttribute('data-confirm-danger'), confirmText: form.getAttribute('data-confirm-text') || '确认', cancelText: form.getAttribute('data-cancel-text') || '取消' }).then(function (ok) {
         if (!ok) return;
         form.dataset.confirmed = '1';
         if (typeof form.requestSubmit === 'function') form.requestSubmit();
@@ -723,6 +773,7 @@
     initCopy();
     initFileInputs();
     initSwitches();
+    initLogout();
     initConfirmForms();
     initAppearance();
     initPrivateIdentifiers();
