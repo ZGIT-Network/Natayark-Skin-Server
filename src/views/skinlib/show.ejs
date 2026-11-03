@@ -41,8 +41,8 @@
         <% } %>
         <% if (allowDownload) { %><a class="btn btn-outline mt-3" href="/raw/<%= texture.tid %>" download="<%= texture.name %>.png"><%- icon('download') %><%= t('skinlib.download-texture') %></a><% } %>
         <% if ((isOwner || isAdmin) && texture.type !== 'cape') { %>
-        <form data-action="texture-model" data-tid="<%= texture.tid %>" class="mt-4 flex items-end gap-2">
-          <label class="field flex-1"><span class="label"><%= t('skinlib.model') %></span><span class="select-wrap"><select class="select" name="type"><option value="steve" <%= texture.type === 'steve' ? 'selected' : '' %>><%= t('skinlib.model-classic') %></option><option value="alex" <%= texture.type === 'alex' ? 'selected' : '' %>><%= t('skinlib.model-slim') %></option></select></span></label>
+        <form data-action="texture-model" data-tid="<%= texture.tid %>" class="inline-form mt-4">
+          <label class="field"><span class="label"><%= t('skinlib.model') %></span><span class="select-wrap"><select class="select" name="type"><option value="steve" <%= texture.type === 'steve' ? 'selected' : '' %>><%= t('skinlib.model-classic') %></option><option value="alex" <%= texture.type === 'alex' ? 'selected' : '' %>><%= t('skinlib.model-slim') %></option></select></span></label>
           <button type="submit" class="btn btn-outline"><%= t('skinlib.change-model') %></button>
         </form>
         <% } %>

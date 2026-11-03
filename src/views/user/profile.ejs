@@ -3,7 +3,7 @@
 <% if (!user.verified) { %>
 <div class="alert alert-warning mb-5">
   <%- icon('mail') %>
-  <div class="flex-1">
+  <div class="alert-content">
     <div class="alert-title"><%= t('profile.email-unverified') %></div>
     <p class="alert-description"><%= t('profile.email-unverified-help') %></p>
   </div>
@@ -25,14 +25,14 @@
   <section class="card">
     <div class="card-header"><div><h2 class="card-title"><%= t('profile.avatar') %></h2><p class="card-description"><%= t('profile.avatar-description') %></p></div></div>
     <div class="card-content">
-      <div class="flex items-center gap-4">
+      <div class="profile-avatar">
         <span class="avatar size-16 rounded-xl border border-border">
           <img src="/avatar/user/<%= user.uid %>?v=5&size=96" alt="" width="96" height="96">
         </span>
-        <form method="post" action="/user/profile" class="flex-1">
+        <form method="post" action="/user/profile">
           <input type="hidden" name="csrf" value="<%= csrf %>">
           <input type="hidden" name="action" value="avatar">
-          <div class="flex gap-1.5">
+          <div class="inline-form">
             <input class="input" type="number" id="avatar" name="avatar" min="0" value="<%= user.avatar ?? 0 %>" aria-label="<%= t('profile.avatar-tid') %>">
             <button class="btn btn-outline" type="submit"><%= t('common.update') %></button>
           </div>
@@ -45,7 +45,7 @@
   <section class="card">
     <div class="card-header"><div><h2 class="card-title"><%= t('profile.nickname') %></h2></div></div>
     <div class="card-content">
-      <form method="post" action="/user/profile" class="flex gap-1.5">
+      <form method="post" action="/user/profile" class="inline-form">
         <input type="hidden" name="csrf" value="<%= csrf %>">
         <input type="hidden" name="action" value="nickname">
         <input class="input" name="nickname" value="<%= user.nickname %>" maxlength="50" required aria-label="<%= t('profile.nickname') %>">

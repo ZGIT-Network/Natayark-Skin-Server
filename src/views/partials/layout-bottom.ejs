@@ -11,9 +11,9 @@
   window.__CSRF = <%- JSON.stringify(typeof csrf !== 'undefined' ? csrf : '') %>;
   window.__USER_ID = <%- JSON.stringify(typeof user !== 'undefined' && user ? user.uid : 0) %>;
 </script>
-<script src="/js/ui.js?v=11"></script>
+<script src="/js/ui.js?v=12"></script>
 <script src="/js/app.js?v=11"></script>
-<script src="/js/navigation.js?v=11"></script>
+<script src="/js/navigation.js?v=12"></script>
 <% if (typeof customJs !== 'undefined' && customJs) { %>
 <script><%- customJs %></script>
 <% } %>

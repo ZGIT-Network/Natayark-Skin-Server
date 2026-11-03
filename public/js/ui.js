@@ -237,6 +237,15 @@
     qsa('[data-tabs]').forEach(function (tabs) {
       var triggers = qsa('[data-tab]', tabs);
       if (!triggers.length) return;
+      var tablist = qs('[role="tablist"]', tabs);
+      if (tablist && tabs.classList.contains('tabs-vertical')) {
+        var desktop = window.matchMedia('(min-width: 1024px)');
+        function updateOrientation() {
+          tablist.setAttribute('aria-orientation', desktop.matches ? 'vertical' : 'horizontal');
+        }
+        updateOrientation();
+        on(desktop, 'change', updateOrientation);
+      }
       var initial = triggers.filter(function (trigger) {
         return trigger.getAttribute('aria-selected') === 'true';
       })[0];

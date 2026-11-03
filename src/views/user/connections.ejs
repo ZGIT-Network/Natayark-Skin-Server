@@ -20,7 +20,7 @@
       <ul class="divide-y divide-border">
         <% for (const identity of identities) { %>
         <li class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-          <div class="flex items-center gap-3">
+          <div class="min-w-0 flex items-center gap-3 wrap-anywhere">
             <div>
               <div class="text-sm font-medium"><%= providers.find(p => p.key === identity.provider)?.displayName || identity.provider %></div>
               <div class="text-xs text-muted-foreground"><%= identity.display_name || t('connections.bound') %></div>
@@ -39,9 +39,9 @@
       <% if (unbound.length > 0) { %>
       <div class="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
         <% for (const provider of unbound) { %>
-        <form method="post" action="/user/connections/<%= encodeURIComponent(provider.key) %>/link">
+        <form method="post" action="/user/connections/<%= encodeURIComponent(provider.key) %>/link" class="min-w-0 max-w-full">
           <input type="hidden" name="csrf" value="<%= csrf %>">
-          <button class="btn btn-outline btn-sm" type="submit"><%= t('connections.link', { provider: provider.displayName }) %></button>
+          <button class="btn btn-outline btn-sm btn-wrap max-w-full" type="submit"><%= t('connections.link', { provider: provider.displayName }) %></button>
         </form>
         <% } %>
       </div>

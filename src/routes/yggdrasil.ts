@@ -87,8 +87,8 @@ export async function yggdrasilMetadata(): Promise<Record<string, any>> {
   const meta: Record<string, any> = {
     meta: {
       serverName: await serverName(),
-      implementationName: 'Natayark SkinServer',
-      implementationVersion: '1.1.0',
+      implementationName: 'Natayark Skin Server',
+      implementationVersion: '1.1.1',
       links: { homepage: await getOption('site_url', '/'), register: `${await getOption('site_url', '')}/auth/register` },
       'feature.non_email_login': !(await getOptionBool('ygg_disable_authserver', false)),
       'feature.openid_configuration_url': `${await issuer()}/.well-known/openid-configuration`,

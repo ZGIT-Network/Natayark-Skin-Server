@@ -1,6 +1,6 @@
 {
   "name": "natayark-skin-server",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Self-hosted Minecraft skin server with Yggdrasil authentication and Yggdrasil Connect.",
   "private": true,
   "license": "MIT",
