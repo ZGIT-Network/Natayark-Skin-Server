@@ -12,6 +12,7 @@ import {
   checkUserPassword,
   changeUserPassword,
   signUser,
+  canSignUser,
   isAdmin,
   PERMISSION_BANNED,
 } from '../services/user.js';
@@ -25,7 +26,7 @@ import { revokeAllTokensForUser } from '../services/token.js';
 import { getUuidByName, normalizeUuid } from '../services/uuid.js';
 import { verificationOf,mojangConfiguration } from '../services/mojang.js';
 import { loginMethods } from '../services/login-methods.js';
-import { randomToken } from '../util.js';
+import { randomToken, loadPlayerNameRules } from '../util.js';
 import { sendMail, mailConfigured } from '../services/mail.js';
 import { appearanceSettings, HOME_LAYOUTS, PALETTES, RADIUS_PRESETS, isHomeLayout, parseAppearance, saveAppearance, themeContext } from '../services/theme.js';
 import { pageNumber, siteChart, siteSummary } from '../services/site-data.js';
@@ -152,7 +153,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       }))
     );
     const user = request.currentUser;
-    const canSign = !signedToday(user!.last_sign_at);
+    const canSign = await canSignUser(user!.last_sign_at);
     const hasPassword = !!user!.password;
     const [verification,verificationSettings,verificationReward]=await Promise.all([verificationOf(user!.uid),mojangConfiguration(),getOptionInt('mojang_verification_score_award',0)]);
     return reply.view('user/index', { ...base, players: playerData, canSign, hasPassword, usage:await accountUsage(uid),
@@ -486,6 +487,8 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     for (const key of keys) values[key] = (await getOption(key)) ?? '';
     return reply.view('admin/settings', {
       ...base, values,singlePlayerMode:await singlePlayerLimitEnabled(),
+      siteUrlLocked: !!config.publicOrigin,
+      oidcIssuerOverride: config.oidcIssuer,
       saved: (request.query as any)?.saved === '1',
       error: String((request.query as any)?.error ?? ''),
       providers: await loadProviders(),
@@ -536,6 +539,17 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     const allowed = new Set(['site_name','site_name_zh_CN','site_name_en','site_url','site_description','site_description_zh_CN','site_description_en','announcement','announcement_zh_CN','announcement_en','copyright_text','player_name_rule','player_name_length_min','player_name_length_max','custom_player_name_regexp','register_with_player_name','local_login_enabled','regs_per_ip','require_verification','user_initial_score','score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','reporter_score_modification','reporter_reward_score','return_score','take_back_scores_after_deletion','status_code_for_private','allow_downloading_texture','max_upload_file_size','sign_score','sign_gap_time','sign_after_zero','ygg_uuid_algorithm','ygg_token_expire_1','ygg_token_expire_2','ygg_tokens_limit','ygg_search_profile_max','ygg_skin_domain','ygg_disable_authserver','ygg_shared_client_id','yggc_device_code_expire','content_policy']);
     allowed.add('textures_description_limit');
     allowed.add('upload_reward_daily_limit');
+    allowed.add('ygg_connect_server_url');
+    if (body.ygg_connect_server_url !== undefined) {
+      const value = String(body.ygg_connect_server_url).trim().replace(/\/+$/, '');
+      if (value) {
+        try {
+          const url = new URL(value);
+          if (!/^https?:\/\//i.test(value) || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || /[\\\s?#]/.test(value) || value.length > 2048) throw new Error('Invalid issuer');
+        } catch { return reply.redirect('/admin/settings?error=oidc-issuer#ygg'); }
+      }
+      body.ygg_connect_server_url = value;
+    }
     if (body.upload_reward_daily_limit !== undefined && (!/^\d{1,5}$/.test(body.upload_reward_daily_limit) || Number(body.upload_reward_daily_limit) > 10000)) return reply.redirect('/admin/settings?error=reward-limit#score');
     allowed.add('max_players_per_user');allowed.add('mojang_verification_score_award');
     if(body.max_players_per_user!==undefined&&(!/^\d{1,7}$/.test(body.max_players_per_user)||Number(body.max_players_per_user)>1000000))return reply.redirect('/admin/settings?error=player-limit#register');
@@ -563,6 +577,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       for (const key of editable) await setOption(key, key === 'local_login_enabled' ? (localLoginNext ? 'true' : 'false') : String(body[key] ?? ''));
       if(body.single_player_limit!==undefined)await setPluginEnabled('single-player-limit',body.single_player_limit==='true');
     });}catch(error){await loadOptions(true);throw error;}
+    if (editable.some(key => ['player_name_rule', 'custom_player_name_regexp', 'player_name_length_min', 'player_name_length_max'].includes(key))) await loadPlayerNameRules();
     return reply.redirect('/admin/settings?saved=1');
   });
 
@@ -590,12 +605,6 @@ function requireAdmin(request: any, reply: any): boolean {
     return false;
   }
   return true;
-}
-
-function signedToday(lastSignAt: string): boolean {
-  const today = new Date();
-  const todayStr = today.toLocaleDateString('sv-SE', { timeZone: process.env.TZ || 'Asia/Shanghai' });
-  return lastSignAt.slice(0, 10) >= todayStr;
 }
 
 function safeRedirect(target: string | undefined): string {

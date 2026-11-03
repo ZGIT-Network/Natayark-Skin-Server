@@ -11,6 +11,7 @@ for (const file of [
   'tests/addons.integration.ts', 'tests/protocol.integration.ts',
   'tests/mojang.integration.ts', 'tests/web.integration.test.ts',
   'tests/appearance.integration.test.ts',
+  'tests/settings.integration.test.ts',
   'tests/connect-http.integration.test.ts',
   'tests/oidc-transactions.integration.test.ts',
   'tests/management.integration.test.ts',

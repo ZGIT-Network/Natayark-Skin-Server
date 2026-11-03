@@ -7,7 +7,7 @@ import { config } from '../config.js';
  */
 const DEFAULTS: Record<string, string> = {
   site_name: 'Natayark SkinServer',
-  site_name_en: 'Natayark SkinServer',
+  site_name_en: '',
   site_url: 'http://localhost:3000',
   site_description: '',
   announcement: '',
@@ -127,11 +127,12 @@ export async function setOption(name: string, value: string): Promise<void> {
   cache.data.set(name, value);
 }
 
-/** Localized option like site_name / announcement (falls back through lang suffixes). */
+/** A translated value overrides the default; English is the final fallback. */
 export async function getOptionLocalized(name: string, locale: string): Promise<string> {
   const specific = await getOption(`${name}_${locale}`);
   if (specific !== null && specific !== '') return specific;
+  const fallback = await getOption(name);
+  if (fallback !== null && fallback !== '') return fallback;
   const en = await getOption(`${name}_en`);
-  if (en !== null && en !== '') return en;
-  return (await getOption(name)) ?? '';
+  return en ?? '';
 }

@@ -14,10 +14,11 @@ process.env.DB_TABLE_PREFIX = prefix;
 process.env.TEXTURE_DIR = `.test-artifacts/economy-${suffix}`;
 const { config } = await import('../src/config.js');
 assert.equal(config.db.tablePrefix, prefix);
-const { exec, insert, queryOne, pool, nowString, withTransaction } = await import('../src/db.js');
+const { exec, insert, queryOne, pool, nowString, localStringToEpoch, withTransaction } = await import('../src/db.js');
 const { setOption } = await import('../src/services/option.js');
 const { uploadTexture, closetAdd, closetRemove, setTexturePrivacy, deleteTexture, findTextureByTid, setDescription, getDescription } = await import('../src/services/texture.js');
 const { addPlayer, bindSinglePlayer, deletePlayer, setPlayerTexture, findPlayerByPid } = await import('../src/services/player.js');
+const { canSignUser, signUser, findUserByUid } = await import('../src/services/user.js');
 const { registerTextureRoutes } = await import('../src/routes/textures.js');
 const { batchImportTextures } = await import('../src/services/batch-import.js');
 const { collectTextureGarbage, lockTextureFile } = await import('../src/services/texture-files.js');
@@ -52,6 +53,25 @@ try {
     created.push(table);
   }
   for (const [key, value] of Object.entries({ score_per_storage: '3', private_score_per_storage: '25', score_per_closet_item: '2', score_award_per_texture: '20', score_award_per_like: '5', return_score: '1', take_back_scores_after_deletion: '1', max_upload_file_size: '1024', plugins_enabled: '{}', score_per_player: '100', ygg_uuid_algorithm: 'v3' })) await setOption(key, value);
+
+  const { mock } = await import('node:test');
+  try {
+    mock.timers.enable({ apis: ['Date'], now: localStringToEpoch('2026-11-04 12:00:00') });
+    await setOption('sign_after_zero', 'false');
+    await setOption('sign_gap_time', '48');
+    await setOption('sign_score', '10,10');
+    const signer = await user(0);
+    await exec('UPDATE users SET last_sign_at=? WHERE uid=?', ['2026-11-03 12:00:00', signer]);
+    let signingUser = (await findUserByUid(signer))!;
+    check(!(await canSignUser(signingUser.last_sign_at)) && !(await signUser(signingUser)).ok && await score(signer) === 0, 'hourly sign-in remains unavailable across midnight until the configured interval passes');
+    await setOption('sign_gap_time', '2');
+    await exec('UPDATE users SET last_sign_at=? WHERE uid=?', ['2026-11-04 09:00:00', signer]);
+    signingUser = (await findUserByUid(signer))!;
+    check(await canSignUser(signingUser.last_sign_at) && (await signUser(signingUser)).ok && await score(signer) === 10, 'hourly sign-in becomes available again on the same day when its interval passes');
+    check(!(await signUser(signingUser)).ok && await score(signer) === 10, 'sign-in checks the locked timestamp instead of a stale user snapshot');
+    await setOption('sign_after_zero', 'true');
+    check(!(await canSignUser('2026-11-04 01:00:00')) && await canSignUser('2026-11-03 23:59:59'), 'midnight sign-in availability follows the configured local date');
+  } finally { mock.timers.reset(); }
 
   const owner = await user(0);
   const uploaded = await upload(owner);

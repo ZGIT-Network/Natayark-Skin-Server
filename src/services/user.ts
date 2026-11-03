@@ -132,11 +132,16 @@ export async function registerUserInTransaction(conn: PoolConnection, input: Reg
   return { ok: true, user: user! };
 }
 
+/** Shared availability for the dashboard and the locked sign-in operation. */
+export async function canSignUser(lastSignAt: string): Promise<boolean> {
+  const signAfterZero = await getOptionBool('sign_after_zero', true);
+  if (signAfterZero) return lastSignAt.slice(0, 10) < nowString().slice(0, 10);
+  const gap = await getOptionInt('sign_gap_time', 24);
+  return localStringToEpoch(lastSignAt) + gap * 3600_000 <= Date.now();
+}
+
 /** Daily sign-in award, mirroring UserController@sign. */
 export async function signUser(user: User): Promise<{ ok: boolean; acquired: number } | { ok: false; reason: 'too-early' }> {
-  const signAfterZero = await getOptionBool('sign_after_zero', true);
-  const gap = await getOptionInt('sign_gap_time', 24);
-
   const [minStr, maxStr] = (await getOption('sign_score', '10,100')).split(',');
   const min = parseInt(minStr, 10) || 0;
   const max = parseInt(maxStr ?? minStr, 10) || min;
@@ -144,10 +149,7 @@ export async function signUser(user: User): Promise<{ ok: boolean; acquired: num
   return transaction(async conn => {
     const [users] = await conn.query<any[]>('SELECT last_sign_at FROM users WHERE uid = ? FOR UPDATE', [user.uid]);
     if (!users.length) return { ok: false, reason: 'too-early' };
-    const lastSign = String(users[0].last_sign_at);
-    const canSign = signAfterZero ? lastSign.slice(0, 10) < nowString().slice(0, 10)
-      : localStringToEpoch(lastSign) + gap * 3600_000 <= Date.now();
-    if (!canSign) return { ok: false, reason: 'too-early' };
+    if (!(await canSignUser(String(users[0].last_sign_at)))) return { ok: false, reason: 'too-early' };
     await conn.query('UPDATE users SET score = score + ?, last_sign_at = ? WHERE uid = ?', [acquired, nowString(), user.uid]);
     return { ok: true, acquired };
   });

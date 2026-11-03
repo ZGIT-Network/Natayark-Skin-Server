@@ -1607,6 +1607,8 @@
     border: 1px solid var(--border); border-radius: var(--radius);
   }
   .home-visual-fixed { background-attachment: fixed; }
+  .home-announcement { border-top: 1px solid var(--border); padding-block: 2.5rem; overflow-wrap: anywhere; }
+  .home-announcement .prose { max-width: none; }
   .home-library { border-top: 1px solid var(--border); padding-block: 2.5rem 3rem; }
   .home-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
   .home-section-heading h2 { font-size: 0.9375rem; font-weight: 600; letter-spacing: 0.01em; }

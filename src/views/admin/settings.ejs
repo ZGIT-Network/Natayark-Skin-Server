@@ -18,6 +18,7 @@
     'player-limit':'角色上限必须是 0–1000000 之间的整数；0 表示不设固定上限。',
     'verification-reward':'正版验证奖励必须是 0–2147483647 之间的整数。',
     'plugins-invalid':'现有插件开关配置格式无效，未修改角色模式。',
+    'oidc-issuer':'OIDC Issuer 必须是完整的 HTTP(S) 地址，不能包含登录凭据、查询参数或片段。',
   };
 %>
 <div class="alert alert-destructive mb-5" role="alert">
@@ -50,8 +51,8 @@
             </label>
             <label class="field">
               <span class="label">站点 URL</span>
-              <input class="input" name="site_url" value="<%= values.site_url %>">
-              <span class="field-hint">包含协议，结尾不要加斜杠。</span>
+              <input class="input" name="site_url" value="<%= values.site_url %>" <%= siteUrlLocked ? 'disabled' : '' %>>
+              <span class="field-hint"><%= siteUrlLocked ? '当前由 PUBLIC_ORIGIN 环境变量指定；请修改环境变量并重启服务。' : '包含协议，结尾不要加斜杠。' %></span>
             </label>
             <label class="field">
               <span class="label">站点名称 · 简体中文</span>
@@ -79,8 +80,19 @@
               <span class="field-hint">此处内容由站点自行定义，留空时不显示。项目署名 Powered by Natayark Skin Server 会单独保留。</span>
             </label>
             <label class="field sm:col-span-2">
-              <span class="label">首页公告（Markdown）</span>
+              <span class="label">站点公告（默认，Markdown）</span>
               <textarea class="textarea" name="announcement" rows="6"><%= values.announcement %></textarea>
+              <span class="field-hint">显示在首页和用户中心。对应语言的公告优先，留空使用默认公告；默认也为空时回退到英文公告。</span>
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">站点公告 · 简体中文（Markdown）</span>
+              <textarea class="textarea" name="announcement_zh_CN" rows="6"><%= values.announcement_zh_CN %></textarea>
+              <span class="field-hint">留空使用默认公告。</span>
+            </label>
+            <label class="field sm:col-span-2">
+              <span class="label">站点公告 · English（Markdown）</span>
+              <textarea class="textarea" name="announcement_en" rows="6"><%= values.announcement_en %></textarea>
+              <span class="field-hint">Leave empty to use the default announcement.</span>
             </label>
             <label class="field"><span class="label">材质描述字数上限</span><input class="input" name="textures_description_limit" type="number" min="0" max="65535" value="<%= values.textures_description_limit %>"><span class="field-hint">0 表示不额外限制字符数；实际容量取决于当前描述列。</span></label>
             <label class="field sm:col-span-2"><span class="label">上传内容政策（Markdown）</span><textarea class="textarea" name="content_policy" rows="4" placeholder="可说明版权、内容范围及使用规则；留空则不展示。"><%= values.content_policy %></textarea></label>
@@ -212,7 +224,7 @@
             <label class="field"><span class="label">每用户令牌上限</span><input class="input" name="ygg_tokens_limit" type="number" value="<%= values.ygg_tokens_limit %>"></label>
             <label class="field"><span class="label">批量查询角色上限</span><input class="input" name="ygg_search_profile_max" type="number" value="<%= values.ygg_search_profile_max %>"></label>
             <label class="field"><span class="label">皮肤域名</span><input class="input" name="ygg_skin_domain" value="<%= values.ygg_skin_domain %>"><span class="field-hint">逗号分隔，留空表示使用站点域名。</span></label>
-            <label class="field"><span class="label">OIDC Issuer</span><input class="input" name="ygg_connect_server_url" value="<%= values.ygg_connect_server_url %>"><span class="field-hint">留空表示使用站点 URL。</span></label>
+            <label class="field"><span class="label">OIDC Issuer</span><input class="input" name="ygg_connect_server_url" value="<%= oidcIssuerOverride || values.ygg_connect_server_url %>" <%= oidcIssuerOverride ? 'disabled' : '' %>><span class="field-hint"><%= oidcIssuerOverride ? '当前由 OIDC_ISSUER 环境变量指定；请修改环境变量并重启服务。' : '留空表示使用站点 URL。修改后，客户端需使用新的 Issuer。' %></span></label>
             <label class="field"><span class="label">公用应用 Client ID</span><input class="input" name="ygg_shared_client_id" value="<%= values.ygg_shared_client_id %>"><span class="field-hint">留空禁用。</span></label>
             <label class="field"><span class="label">设备码有效期（秒）</span><input class="input" name="yggc_device_code_expire" type="number" value="<%= values.yggc_device_code_expire %>"></label>
             <label class="field"><span class="label">材质上传上限（KB）</span><input class="input" name="max_upload_file_size" type="number" value="<%= values.max_upload_file_size %>"></label>

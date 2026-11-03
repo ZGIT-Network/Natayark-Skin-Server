@@ -125,7 +125,7 @@ export async function yggcFindByUid(table: 'yggc_interactions' | 'yggc_grants' |
 // Issuer & discovery
 
 export async function issuer(): Promise<string> {
-  const configured = config.oidcIssuer;
+  const configured = config.oidcIssuer || await getOption('ygg_connect_server_url', '');
   if (configured) return configured.replace(/\/+$/, '');
   return (await getOption('site_url', 'http://localhost:3000')).replace(/\/+$/, '');
 }

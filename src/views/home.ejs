@@ -47,6 +47,12 @@
   </section>
 
   <div class="home-container">
+  <% if (announcementHtml.trim()) { %>
+  <section class="home-announcement" aria-labelledby="announcement-title">
+    <div class="home-section-heading"><h2 id="announcement-title"><%= t('user.announcement') %></h2></div>
+    <div class="prose"><%- announcementHtml %></div>
+  </section>
+  <% } %>
   <% if (showRecent) { %>
   <section class="home-library" aria-labelledby="recent-title">
     <div class="home-section-heading">
