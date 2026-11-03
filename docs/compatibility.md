@@ -24,6 +24,8 @@ status:0 report_at>=2026-01-01
 
 已有 MySQL 5.7.26 数据库的完整隔离副本通过结构与业务核对。原始表的字段、索引、外键和内容保留；扩展状态使用独立表。描述列扩大为 TEXT 是可选迁移。
 
+2026-11 的本地回归分别在 MySQL 5.7.26 与 Windows MySQL 8.4.13 上通过全部 17 组数据库集成测试，包含 45 项协议检查及 OIDC 提交屏障／提交失败测试。Linux GitHub Actions 的结果以对应提交的 CI 为准，本地通过不代替远程检查。
+
 更细的协议说明见 [protocol-compatibility.md](protocol-compatibility.md)，第三方账户衔接见 [authentication.md](authentication.md)。
 
 ## 尚需实测或未实现

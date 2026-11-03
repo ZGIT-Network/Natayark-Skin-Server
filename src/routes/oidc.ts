@@ -72,6 +72,13 @@ function redirectToClient(reply: FastifyReply, redirectUri: string, params: Reco
 
 type ClientInfo = NonNullable<Awaited<ReturnType<typeof findClient>>>;
 
+type CommittedResponse = () => FastifyReply | Promise<FastifyReply>;
+/** Never expose a redirect, token or success response before its state commits. */
+async function replyAfterCommit(work: () => Promise<CommittedResponse>): Promise<FastifyReply> {
+  const respond = await withTransaction(work);
+  return respond();
+}
+
 async function authenticateClient(request: FastifyRequest, clientIdParam?: string): Promise<{ client: ClientInfo; publicClient: boolean } | { error: string; error_description: string }> {
   let clientId = clientIdParam;
   let clientSecret: string | undefined;
@@ -208,19 +215,19 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
   // --- Interaction UI -------------------------------------------------------
   app.get('/connect/interaction/:uid', async (request, reply) => renderInteraction(request, reply, (request.params as any).uid));
 
-  app.post('/connect/interaction/:uid/confirm', async (request, reply) => withTransaction(async () => {
+  app.post('/connect/interaction/:uid/confirm', async (request, reply) => replyAfterCommit(async () => {
     const { uid } = request.params as { uid: string };
     const body = (request.body ?? {}) as Record<string, string>;
-    if (!request.checkCsrf(body.csrf)) return oauthError(reply, 403, 'access_denied', 'CSRF check failed');
+    if (!request.checkCsrf(body.csrf)) return async () => oauthError(reply, 403, 'access_denied', 'CSRF check failed');
 
     const record = await yggcFind('yggc_interactions', uid, true);
-    if (!record) return oauthError(reply, 404, 'invalid_request', 'Unknown interaction');
+    if (!record) return async () => oauthError(reply, 404, 'invalid_request', 'Unknown interaction');
     const params = record.payload.params as Record<string, string>;
 
     const accountId = await currentUserUid(request);
-    if (!accountId) return reply.redirect(`/auth/login?redirect=${encodeURIComponent(`/connect/interaction/${uid}`)}`);
+    if (!accountId) return async () => reply.redirect(`/auth/login?redirect=${encodeURIComponent(`/connect/interaction/${uid}`)}`);
     const user = await findUserByUid(accountId);
-    if (!user || user.permission === -1) return oauthError(reply, 403, 'access_denied', 'The user is banned');
+    if (!user || user.permission === -1) return async () => oauthError(reply, 403, 'access_denied', 'The user is banned');
 
     const scopes = (params.scope ?? '').split(' ').filter(Boolean);
 
@@ -233,13 +240,13 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
       const byName = input ? await getUuidByName(input) : null;
       const resolved = byId ?? (byName && profiles.some((p) => p.id === byName) ? byName : null);
       if (!resolved) {
-        return reply.view('error', { ...(await pageContext(request, '错误')), code: 400, message: '请选择一个属于你的角色后再授权。' });
+        return async () => reply.view('error', { ...(await pageContext(request, '错误')), code: 400, message: '请选择一个属于你的角色后再授权。' });
       }
       selectedProfile = resolved;
     }
 
     const client = await findClient(params.client_id);
-    if (!client) return oauthError(reply, 400, 'invalid_request', 'Unknown client');
+    if (!client) return async () => oauthError(reply, 400, 'invalid_request', 'Unknown client');
 
     // Confidential clients may reuse a previously persisted grant; public clients always re-consent.
     let grantId: string | null = null;
@@ -255,7 +262,7 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
       // Complete the device-flow authorization instead of redirecting.
       const deviceRecord = await yggcFind('yggc_device_codes', record.payload.deviceCodeId, true);
       if (!deviceRecord || deviceRecord.payload.status !== 'pending') {
-        return reply.view('error', { ...(await pageContext(request, '错误')), code: 400, message: '设备码已失效，请在启动器中重新发起授权。' });
+        return async () => reply.view('error', { ...(await pageContext(request, '错误')), code: 400, message: '设备码已失效，请在启动器中重新发起授权。' });
       }
       await yggcUpsert(
         'yggc_device_codes',
@@ -271,7 +278,7 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
         false
       );
       await yggcDelete('yggc_interactions', uid);
-      return reply.view('yggc/device-done', { ...(await pageContext(request, '设备授权')), message: '授权成功，请回到启动器继续。你可以关闭此页面。' });
+      return async () => reply.view('yggc/device-done', { ...(await pageContext(request, '设备授权')), message: '授权成功，请回到启动器继续。你可以关闭此页面。' });
     }
 
     const code = crypto.randomBytes(24).toString('hex');
@@ -291,15 +298,15 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
 
     const redirect: Record<string, string> = { code };
     if (params.state) redirect.state = params.state;
-    return redirectToClient(reply, params.redirect_uri, redirect);
+    return async () => redirectToClient(reply, params.redirect_uri, redirect);
   }));
 
-  app.post('/connect/interaction/:uid/deny', async (request, reply) => withTransaction(async () => {
+  app.post('/connect/interaction/:uid/deny', async (request, reply) => replyAfterCommit(async () => {
     const { uid } = request.params as { uid: string };
     const body = (request.body ?? {}) as Record<string, string>;
-    if (!request.checkCsrf(body.csrf)) return oauthError(reply, 403, 'access_denied', 'CSRF check failed');
+    if (!request.checkCsrf(body.csrf)) return async () => oauthError(reply, 403, 'access_denied', 'CSRF check failed');
     const record = await yggcFind('yggc_interactions', uid, true);
-    if (!record) return oauthError(reply, 404, 'invalid_request', 'Unknown interaction');
+    if (!record) return async () => oauthError(reply, 404, 'invalid_request', 'Unknown interaction');
     const params = record.payload.params as Record<string, string>;
     await yggcDelete('yggc_interactions', uid);
     if (record.payload.kind === 'device') {
@@ -307,9 +314,9 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
       if (deviceRecord) {
         await yggcUpsert('yggc_device_codes', deviceRecord.id, { ...deviceRecord.payload, status: 'denied' }, deviceRecord.uid, false);
       }
-      return reply.view('yggc/device-done', { ...(await pageContext(request, '设备授权')), message: '已拒绝本次授权。' });
+      return async () => reply.view('yggc/device-done', { ...(await pageContext(request, '设备授权')), message: '已拒绝本次授权。' });
     }
-    return redirectToClient(reply, params.redirect_uri, { error: 'access_denied', error_description: 'The user denied the authorization request', state: params.state ?? '' });
+    return async () => redirectToClient(reply, params.redirect_uri, { error: 'access_denied', error_description: 'The user denied the authorization request', state: params.state ?? '' });
   }));
 
   // --- Device flow ----------------------------------------------------------
@@ -370,28 +377,28 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // --- Token endpoint ---------------------------------------------------------
-  app.post('/connect/token', async (request, reply) => withTransaction(async () => {
+  app.post('/connect/token', async (request, reply) => replyAfterCommit(async () => {
     reply.header('Cache-Control', 'no-store').header('Pragma', 'no-cache');
     const body = (request.body ?? {}) as Record<string, unknown>;
     const grantType = String(body.grant_type ?? '');
 
     if (grantType === 'authorization_code') {
       const clientAuth = await authenticateClient(request);
-      if ('error' in clientAuth) return clientAuthError(request,reply,clientAuth);
+      if ('error' in clientAuth) return async () => clientAuthError(request,reply,clientAuth);
       const code = String(body.code ?? '');
       const record = await yggcFind('yggc_authorization_codes', code, true);
       if (!record || record.consumed || record.payload.expiresAt < Math.floor(Date.now() / 1000)) {
-        return oauthError(reply, 400, 'invalid_grant', 'Invalid or expired authorization code');
+        return async () => oauthError(reply, 400, 'invalid_grant', 'Invalid or expired authorization code');
       }
       if (record.payload.clientId !== String(clientAuth.client.id)) {
-        return oauthError(reply, 400, 'invalid_grant', 'The code was issued to another client');
+        return async () => oauthError(reply, 400, 'invalid_grant', 'The code was issued to another client');
       }
       if (String(body.redirect_uri ?? '') !== record.payload.redirectUri) {
-        return oauthError(reply, 400, 'invalid_grant', 'redirect_uri does not match');
+        return async () => oauthError(reply, 400, 'invalid_grant', 'redirect_uri does not match');
       }
       if (record.payload.codeChallenge) {
         const ok = verifyPkce(record.payload.codeChallenge, typeof body.code_verifier === 'string' ? body.code_verifier : undefined);
-        if (!ok) return oauthError(reply, 400, 'invalid_grant', 'PKCE verification failed');
+        if (!ok) return async () => oauthError(reply, 400, 'invalid_grant', 'PKCE verification failed');
       }
       await yggcUpsert('yggc_authorization_codes', code, record.payload, record.uid, true);
 
@@ -407,29 +414,29 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
         },
         scopes.includes(SCOPES.OFFLINE_ACCESS)
       );
-      return tokenResponse(reply, bundle);
+      return async () => tokenResponse(reply, bundle);
     }
 
     if (grantType === 'refresh_token') {
       const clientAuth = await authenticateClient(request);
-      if ('error' in clientAuth) return clientAuthError(request,reply,clientAuth);
+      if ('error' in clientAuth) return async () => clientAuthError(request,reply,clientAuth);
       const refreshTokenId = String(body.refresh_token ?? '');
       const refresh = await findRefreshToken(refreshTokenId, true);
-      if (!refresh || refresh.revoked || !refresh.expires_at || localStringToEpoch(refresh.expires_at) <= Date.now()) return oauthError(reply, 400, 'invalid_grant', 'Invalid refresh token');
+      if (!refresh || refresh.revoked || !refresh.expires_at || localStringToEpoch(refresh.expires_at) <= Date.now()) return async () => oauthError(reply, 400, 'invalid_grant', 'Invalid refresh token');
       const state = await yggcFind('yggc_refresh_tokens', refreshTokenId, true);
-      if (!state || state.consumed) return oauthError(reply, 400, 'invalid_grant', 'The refresh token is unavailable; sign in again');
+      if (!state || state.consumed) return async () => oauthError(reply, 400, 'invalid_grant', 'The refresh token is unavailable; sign in again');
       const associated = await loadTokenRow(refresh.access_token_id);
-      if (!associated) return oauthError(reply, 400, 'invalid_grant', 'The associated access token is no longer valid');
+      if (!associated) return async () => oauthError(reply, 400, 'invalid_grant', 'The associated access token is no longer valid');
       if (associated.clientId !== String(clientAuth.client.id)) {
-        return oauthError(reply, 400, 'invalid_grant', 'The refresh token was issued to another client');
+        return async () => oauthError(reply, 400, 'invalid_grant', 'The refresh token was issued to another client');
       }
-      if (state.payload.clientId !== String(clientAuth.client.id) || Number(state.payload.accountId) !== associated.userId || state.payload.accessTokenId !== associated.jti) return oauthError(reply, 400, 'invalid_grant', 'Invalid refresh token binding');
+      if (state.payload.clientId !== String(clientAuth.client.id) || Number(state.payload.accountId) !== associated.userId || state.payload.accessTokenId !== associated.jti) return async () => oauthError(reply, 400, 'invalid_grant', 'Invalid refresh token binding');
       const grant = state.payload.grantId ? await yggcFind('yggc_grants', state.payload.grantId) : null;
-      if (state.payload.grantId && !grant) return oauthError(reply, 400, 'invalid_grant', 'Authorization has been revoked or expired');
+      if (state.payload.grantId && !grant) return async () => oauthError(reply, 400, 'invalid_grant', 'Authorization has been revoked or expired');
       let scopes = associated.scopes;
       if (body.scope !== undefined) {
         const narrowed = validateScopes(typeof body.scope === 'string' ? body.scope : '');
-        if (!narrowed.ok || narrowed.scopes.some((s) => !scopes.includes(s))) return oauthError(reply, 400, 'invalid_scope', 'Refresh scope may only narrow the original grant');
+        if (!narrowed.ok || narrowed.scopes.some((s) => !scopes.includes(s))) return async () => oauthError(reply, 400, 'invalid_scope', 'Refresh scope may only narrow the original grant');
         scopes = narrowed.scopes;
       }
 
@@ -447,33 +454,33 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
         },
         scopes.includes(SCOPES.OFFLINE_ACCESS)
       );
-      return tokenResponse(reply, bundle);
+      return async () => tokenResponse(reply, bundle);
     }
 
     if (grantType === 'urn:ietf:params:oauth:grant-type:device_code') {
       const clientAuth = await authenticateClient(request);
-      if ('error' in clientAuth) return clientAuthError(request,reply,clientAuth);
+      if ('error' in clientAuth) return async () => clientAuthError(request,reply,clientAuth);
       const deviceCodeId = String(body.device_code ?? '');
       const record = await yggcFind('yggc_device_codes', deviceCodeId, true);
-      if (!record) return oauthError(reply, 400, 'expired_token', 'The device code has expired or does not exist');
+      if (!record) return async () => oauthError(reply, 400, 'expired_token', 'The device code has expired or does not exist');
       const payload = record.payload;
-      if (record.consumed) return oauthError(reply, 400, 'expired_token', 'The device code has already been used');
-      if (payload.expiresAt < Math.floor(Date.now() / 1000)) return oauthError(reply, 400, 'expired_token', 'The device code has expired');
+      if (record.consumed) return async () => oauthError(reply, 400, 'expired_token', 'The device code has already been used');
+      if (payload.expiresAt < Math.floor(Date.now() / 1000)) return async () => oauthError(reply, 400, 'expired_token', 'The device code has expired');
       if (payload.clientId !== String(clientAuth.client.id)) {
-        return oauthError(reply, 400, 'invalid_grant', 'The device code was issued to another client');
+        return async () => oauthError(reply, 400, 'invalid_grant', 'The device code was issued to another client');
       }
 
       const now = Math.floor(Date.now() / 1000);
       const interval = payload.interval ?? 5;
       if (payload.lastPoll && now - payload.lastPoll < interval) {
         await yggcUpsert('yggc_device_codes', deviceCodeId, { ...payload, lastPoll: now, interval: interval + 5 }, record.uid, false);
-        return oauthError(reply, 400, 'slow_down', 'Polling too frequently');
+        return async () => oauthError(reply, 400, 'slow_down', 'Polling too frequently');
       }
       await yggcUpsert('yggc_device_codes', deviceCodeId, { ...payload, lastPoll: now }, record.uid, false);
 
-      if (payload.status === 'denied') return oauthError(reply, 400, 'access_denied', 'The user denied the authorization request');
+      if (payload.status === 'denied') return async () => oauthError(reply, 400, 'access_denied', 'The user denied the authorization request');
       if (payload.status !== 'approved' || !payload.accountId) {
-        return oauthError(reply, 400, 'authorization_pending', 'Waiting for the user to complete authorization');
+        return async () => oauthError(reply, 400, 'authorization_pending', 'Waiting for the user to complete authorization');
       }
 
       await yggcUpsert('yggc_device_codes', deviceCodeId, payload, record.uid, true);
@@ -488,19 +495,19 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
         },
         scopes.includes(SCOPES.OFFLINE_ACCESS)
       );
-      return tokenResponse(reply, bundle);
+      return async () => tokenResponse(reply, bundle);
     }
 
-    return oauthError(reply, 400, 'unsupported_grant_type', 'Supported grant types: authorization_code, refresh_token, device_code');
+    return async () => oauthError(reply, 400, 'unsupported_grant_type', 'Supported grant types: authorization_code, refresh_token, device_code');
   }).catch((error) => {
     if (error instanceof TokenError) return oauthError(reply, 400, 'invalid_grant', error.message);
     throw error;
   }));
 
-  app.post('/connect/revoke', async (request, reply) => withTransaction(async () => {
+  app.post('/connect/revoke', async (request, reply) => replyAfterCommit(async () => {
     reply.header('Cache-Control', 'no-store');
     const authenticated = await authenticateClient(request);
-    if ('error' in authenticated) return clientAuthError(request,reply,authenticated);
+    if ('error' in authenticated) return async () => clientAuthError(request,reply,authenticated);
     const body = (request.body ?? {}) as Record<string, unknown>;
     const token = String(body.token ?? '');
     const refresh = await findRefreshToken(token, true);
@@ -511,7 +518,7 @@ export async function registerOidcRoutes(app: FastifyInstance): Promise<void> {
       const verified = await verifyAccessToken(token, { allowExpiredForRefresh: true });
       if (verified && String(verified.clientId) === String(authenticated.client.id)) await revokeTokenRow(verified.jti);
     }
-    return reply.code(200).send();
+    return async () => reply.code(200).send();
   }));
 
   // --- Userinfo -------------------------------------------------------------

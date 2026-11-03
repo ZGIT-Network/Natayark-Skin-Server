@@ -146,7 +146,8 @@ try {
   const texturePayload = signed.properties[0];
   check(crypto.verify('sha1', Buffer.from(texturePayload.value), metadata.signaturePublickey, Buffer.from(texturePayload.signature, 'base64')), 'Texture signature validates with advertised legacy key');
   const revoked = await call('/connect/revoke', { client_id: String(clientIds[0]), token: refreshed.refresh_token });
-  check(revoked.statusCode === 200 && await verifyAccessToken(refreshed.access_token) === null, 'RFC 7009 revokes matching client token pair');
+  check(revoked.statusCode === 200, `Revocation returns HTTP 200: ${revoked.statusCode} ${revoked.body}`);
+  check(await verifyAccessToken(refreshed.access_token) === null, 'RFC 7009 revokes matching client token pair before the response');
   console.log(`Protocol integration: ${checks} checks passed`);
 } finally {
   for (const client of clientIds) {

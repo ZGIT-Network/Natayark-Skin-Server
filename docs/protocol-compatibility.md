@@ -31,6 +31,8 @@ Minecraft Java 26.2/26.3 的角色好友列表已实现，包含好友申请、�
 
 `tests/connect-http.integration.test.ts` 另用独立 `openid-client` 6 通过实际 HTTP 验证发现、授权 HTML／CSRF／角色选择、S256、ID token 的 RS256 签名、UserInfo subject、刷新、Minecraft join／hasJoined 以及吊销。授权、令牌、UserInfo 和 JWKS 都由同一个应用提供，无需 Janus。
 
+2026-11 修复了响应早于事务提交的竞态：授权确认、拒绝、令牌签发／刷新及注销均在 COMMIT 成功后发送响应；提交失败会回滚并返回错误。`tests/oidc-transactions.integration.test.ts` 用提交屏障和故障注入覆盖 16 个场景，验证提交期间不会提前返回令牌、重定向或成功响应，提交后状态立即可见，失败后仍可使用原状态。这些检查已加入完整数据库集成测试。
+
 保留 `/auth`、`/token`、`/jwks`、`/device/auth`、`/device`、`/token/revocation` 等 Janus 常用路径及已有 `/oauth/*` 别名。UserInfo 的三个地址支持 GET／POST，旧 `/yggc/userinfo` 也支持表单 Bearer；拒绝重复令牌传输方式。UserInfo 旧别名支持 CORS；令牌、设备授权与 UserInfo 响应使用 no-store。
 
 ## 渲染服务(2026-10-29 重写)
