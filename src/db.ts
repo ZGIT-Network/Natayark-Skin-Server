@@ -20,13 +20,13 @@ export type RowOrNull = Row | undefined | null;
 const transactionContext = new AsyncLocalStorage<mysql2.PoolConnection>();
 type CommitTask = () => void | Promise<void>;
 const commitTasks = new AsyncLocalStorage<CommitTask[]>();
-const tableNames = new Set(['users','players','textures','options','user_closet','uuid','reports','notifications','scopes','reg_link','mojang_verifications','textures_description','language_lines','jobs','ygg_log','oauth_clients','oauth_access_tokens','oauth_auth_codes','oauth_refresh_tokens','oauth_personal_access_clients','code_id_to_uuid','yggc_authorization_codes','yggc_device_codes','yggc_grants','yggc_interactions','yggc_refresh_tokens','yggc_sessions','mcn_oauth_identities','mcn_oauth_flows','mcn_email_challenges','mcn_web_sessions','mcn_registration_rewards']);
+const tableNames = new Set(['users','players','textures','options','user_closet','uuid','reports','notifications','scopes','reg_link','mojang_verifications','textures_description','language_lines','jobs','ygg_log','oauth_clients','oauth_access_tokens','oauth_auth_codes','oauth_refresh_tokens','oauth_personal_access_clients','code_id_to_uuid','yggc_authorization_codes','yggc_device_codes','yggc_grants','yggc_interactions','yggc_refresh_tokens','yggc_sessions','mcn_oauth_identities','mcn_oauth_flows','mcn_email_challenges','mcn_web_sessions','mcn_registration_rewards','mcn_social_profiles','mcn_friendships']);
 if (config.db.tablePrefix && !/^[a-zA-Z][a-zA-Z0-9_]{0,27}$/.test(config.db.tablePrefix)) throw new Error('Invalid DB_TABLE_PREFIX');
 
 /** Optional isolated validation namespace; production defaults to original names. */
 function namespacedSql(sql: string): string {
   if (!config.db.tablePrefix) return sql;
-  return sql.replace(/\b(FROM|JOIN|INTO|UPDATE|TABLE(?:\s+IF\s+NOT\s+EXISTS)?)\s+(`?)([a-zA-Z_][a-zA-Z0-9_]*)\2/gi, (match, keyword, _quote, name) =>
+  return sql.replace(/\b(FROM|JOIN|INTO|UPDATE|REFERENCES|TABLE(?:\s+IF\s+NOT\s+EXISTS)?)\s+(`?)([a-zA-Z_][a-zA-Z0-9_]*)\2/gi, (match, keyword, _quote, name) =>
     tableNames.has(name.toLowerCase()) ? `${keyword} \`${config.db.tablePrefix}${name}\`` : match);
 }
 

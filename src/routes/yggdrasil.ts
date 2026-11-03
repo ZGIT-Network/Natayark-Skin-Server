@@ -36,6 +36,8 @@ import { yggLog } from '../services/ygglog.js';
 import { randomHex, uuid4Hex } from '../util.js';
 import { issuer } from '../services/oidc.js';
 import { uploadTextureDirect } from './helpers.js';
+import { registerMinecraftServicesRoutes } from './minecraft-services.js';
+import { socialStorageReady } from '../services/friends.js';
 
 // ---------------------------------------------------------------------------
 // Yggdrasil error responses: { error, errorMessage }
@@ -88,11 +90,12 @@ export async function yggdrasilMetadata(): Promise<Record<string, any>> {
     meta: {
       serverName: await serverName(),
       implementationName: 'Natayark Skin Server',
-      implementationVersion: '1.1.1',
+      implementationVersion: '1.1.2',
       links: { homepage: await getOption('site_url', '/'), register: `${await getOption('site_url', '')}/auth/register` },
       'feature.non_email_login': !(await getOptionBool('ygg_disable_authserver', false)),
       'feature.openid_configuration_url': `${await issuer()}/.well-known/openid-configuration`,
       'feature.enable_profile_key': false,
+      'feature.enable_mojang_anti_features': await socialStorageReady(),
     },
     skinDomains: await skinDomains(),
   };
@@ -131,6 +134,7 @@ async function loadUserForAuthentication(identification: string, password: strin
 // ---------------------------------------------------------------------------
 
 export async function registerYggdrasilRoutes(app: FastifyInstance): Promise<void> {
+  await registerMinecraftServicesRoutes(app);
   app.addHook('preHandler', async (request) => {
     if (request.url.startsWith('/api/yggdrasil/authserver/') && await getOptionBool('ygg_disable_authserver', false)) throw forbiddenOperation('Password authentication is disabled. Use Yggdrasil Connect.');
   });

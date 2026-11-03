@@ -37,6 +37,7 @@ npm run admin:promote -- --email you@example.com --apply
 - 多角色管理、材质应用、积分、签到、举报和通知。
 - 邮箱密码、角色名及第三方登录，邮箱验证、密码重置和应用授权管理。
 - Yggdrasil 与内置 Yggdrasil Connect，无需另外运行 Janus。
+- Minecraft Java 26.2/26.3 游戏内[好友列表、隐私偏好与在线状态](docs/minecraft-friends.md)。
 - 自动深色模式、多种首页、可配置配色和圆角。
 
 功能范围与已知限制见[兼容说明](docs/compatibility.md)。

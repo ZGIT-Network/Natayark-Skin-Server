@@ -23,6 +23,8 @@ users、players、uuid、options、oauth_* 和 yggc_* 沿用原表名及列。�
 
 ## 验证方法
 
+Minecraft Java 26.2/26.3 的角色好友列表已实现，包含好友申请、隐私偏好、在线状态和条件轮询。启用迁移、接口和官方 authlib HTTP 测试见 [Minecraft 好友列表](minecraft-friends.md)。这不包含 P2P 联机。
+
 运行：`npx tsx tests/protocol.integration.ts`。脚本强制 DB_TABLE_PREFIX 以 dev_ 开头，只在隔离副本创建临时用户和应用，finally 清理。
 
 2026-10-30 已完成 44 项检查，包括 4 并发兑换 code 只有 1 次成功、3 并发 refresh 只有 1 次成功、ID token 签名/issuer/audience/nonce、设备授权、传统登录、join→hasJoined、跨角色拒绝、旧纹理公钥验签及 RFC 7009 吊销；新增 POST 授权／UserInfo、动态 loopback 端口、缺少 Join 权限、刷新范围扩大及 HTTP 错误检查。

@@ -84,7 +84,8 @@ app.addHook('onRequest', async (request, reply) => {
   if (!CORS_PREFIXES.some((p) => url === p || url.startsWith(p + '/') || url.startsWith(p + '?'))) return;
   reply.header('Access-Control-Allow-Origin', '*');
   reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, If-None-Match');
+  reply.header('Access-Control-Expose-Headers', 'ETag, Retry-After');
   reply.header('Access-Control-Max-Age', '86400');
   if (request.method === 'OPTIONS') {
     return reply.code(204).send();

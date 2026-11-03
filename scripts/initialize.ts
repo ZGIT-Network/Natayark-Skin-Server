@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import mysql from 'mysql2/promise';
 import {config} from '../src/config.js';
 
-const contents=await Promise.all(['schema.sql','migrations/001_auth_extensions.sql','migrations/002_registration_rewards.sql'].map(name=>fs.readFile(name,'utf8')));
+const contents=await Promise.all(['schema.sql','migrations/001_auth_extensions.sql','migrations/002_registration_rewards.sql','migrations/004_minecraft_friends.sql'].map(name=>fs.readFile(name,'utf8')));
 const statements=contents.flatMap(content=>content.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*--.*$/gm,'').split(';').map(value=>value.trim()).filter(Boolean));
 const tableNames=statements.map(sql=>/^CREATE TABLE(?: IF NOT EXISTS)?\s+`?(\w+)`?/i.exec(sql)?.[1]).filter((value):value is string=>!!value);
 if(tableNames.length!==statements.length||new Set(tableNames).size!==tableNames.length)throw new Error('Unexpected initialization schema');

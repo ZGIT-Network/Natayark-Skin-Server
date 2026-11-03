@@ -16,6 +16,7 @@ for (const file of [
   'tests/native-plugins.integration.test.ts',
   'tests/search.integration.test.ts',
   'tests/join-cluster.integration.test.ts',
+  'tests/friends.integration.test.ts',
   'tests/first-start.integration.test.ts',
   'tests/migration.integration.test.ts',
 ]) {

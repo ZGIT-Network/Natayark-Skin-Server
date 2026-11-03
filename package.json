@@ -1,6 +1,6 @@
 {
   "name": "natayark-skin-server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Self-hosted Minecraft skin server with Yggdrasil authentication and Yggdrasil Connect.",
   "private": true,
   "license": "MIT",
@@ -45,7 +45,8 @@
     "typecheck": "tsc -p . --noEmit",
     "migrate": "tsx scripts/migrate.ts",
     "test": "node --import tsx --test tests/auth.test.ts tests/economy.test.ts tests/theme.test.ts tests/render.test.ts tests/client-feedback.test.ts tests/search.test.ts tests/usage.test.ts",
-    "test:integration": "node scripts/test-integration.mjs"
+    "test:integration": "node scripts/test-integration.mjs",
+    "test:friends:client": "node --import tsx --test tests/friends-authlib.integration.test.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
