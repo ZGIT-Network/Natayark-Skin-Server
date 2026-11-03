@@ -23,7 +23,7 @@ test('legacy migration fills missing plugin tables without changing existing sch
   const before=await Promise.all(core.map(async table=>{const [rows]:any=await pool.query('SHOW CREATE TABLE '+quote(prefix+table));return rows[0]['Create Table'];}));
   const dry=run();assert.equal(dry.status,0,dry.stderr);assert.equal((await list()).length,core.length);
   const applied=run('--apply');assert.equal(applied.status,0,applied.stderr);
-  const tables=await list();for(const table of ['uuid','oauth_clients','yggc_grants','mcn_web_sessions','mcn_registration_rewards'])assert.ok(tables.includes(prefix+table));
+  const tables=await list();for(const table of ['uuid','oauth_clients','yggc_grants','mcn_web_sessions','mcn_registration_rewards','mcn_texture_rewards','mcn_texture_uploads'])assert.ok(tables.includes(prefix+table));
   assert.ok(!tables.includes(prefix+'_prisma_migrations'));assert.ok(!tables.includes(prefix+'migrations'));
   const after=await Promise.all(core.map(async table=>{const [rows]:any=await pool.query('SHOW CREATE TABLE '+quote(prefix+table));return rows[0]['Create Table'];}));
   assert.deepEqual(after,before);

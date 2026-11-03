@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
-import { hashSync as argonHashSync, verifySync as argonVerifySync, Algorithm } from '@node-rs/argon2';
+import { hash as bcryptHash, verify as bcryptVerify } from '@node-rs/bcrypt';
+import { hash as argonHash, verify as argonVerify, Algorithm } from '@node-rs/argon2';
+import { passwordWork } from './work-limit.js';
 
 const supported = new Set(['BCRYPT', 'PHP_PASSWORD_HASH', 'ARGON2I', 'MD5', 'SHA256', 'SHA512', 'SALTED2MD5', 'SALTED2SHA256', 'SALTED2SHA512']);
 export const passwordMethod = (): string => (process.env.PWD_METHOD || 'BCRYPT').toUpperCase();
@@ -14,23 +15,26 @@ const safeEqual = (a: string, b: string): boolean => {
 export async function hashPassword(plain: string): Promise<string> {
   const method = passwordMethod();
   if (!supported.has(method)) throw new Error('Unsupported PWD_METHOD');
-  if (method === 'ARGON2I') return argonHashSync(plain, { algorithm: Algorithm.Argon2i });
-  if (method === 'BCRYPT' || method === 'PHP_PASSWORD_HASH') return bcrypt.hashSync(plain, 10).replace(/^\$2[ab]\$/, '$2y$');
+  if (method === 'ARGON2I') return passwordWork.run(() => argonHash(plain, { algorithm: Algorithm.Argon2i }));
+  if (method === 'BCRYPT' || method === 'PHP_PASSWORD_HASH') return passwordWork.run(() => bcryptHash(plain, { cost: 10, version: '2y' }));
   const algorithm = method.replace('SALTED2', '').toLowerCase();
   const first = digest(algorithm, plain);
   return method.startsWith('SALTED2') ? digest(algorithm, first + (process.env.SALT || '')) : first;
 }
-export function verifyPassword(plain: string, hash: string): boolean {
+export async function verifyPassword(plain: string, hash: string): Promise<boolean> {
   if (!hash || typeof plain !== 'string') return false;
   try {
-    if (/^\$2[aby]\$/.test(hash)) return bcrypt.compareSync(plain, hash);
-    if (/^\$argon2(?:i|id|d)\$/.test(hash)) return argonVerifySync(hash, plain);
+    if (/^\$2[aby]\$/.test(hash)) return await passwordWork.run(() => bcryptVerify(plain, hash));
+    if (/^\$argon2(?:i|id|d)\$/.test(hash)) return await passwordWork.run(() => argonVerify(hash, plain));
     const method = passwordMethod();
     if (!supported.has(method) || ['BCRYPT', 'PHP_PASSWORD_HASH', 'ARGON2I'].includes(method)) return false;
     const algorithm = method.replace('SALTED2', '').toLowerCase();
     const first = digest(algorithm, plain);
     return safeEqual(hash, method.startsWith('SALTED2') ? digest(algorithm, first + (process.env.SALT || '')) : first);
-  } catch { return false; }
+  } catch (error) {
+    if ((error as {statusCode?: number}).statusCode === 503) throw error;
+    return false;
+  }
 }
 /** Rehash only when preserving the configured algorithm so the PHP site can still read new hashes. */
 export function needsRehash(hash: string): boolean {

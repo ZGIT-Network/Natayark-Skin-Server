@@ -18,6 +18,7 @@ import {
 import { getOptionInt } from '../services/option.js';
 import { yggLog } from '../services/ygglog.js';
 import { renderMarkdown, validateDescription } from '../services/content.js';
+import { textureParts } from '../services/upload-limits.js';
 
 function fail(reply: any, code: number, message: string) {
   return reply.code(code).send({ code: 1, message });
@@ -150,7 +151,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
 
   // --- Skinlib --------------------------------------------------------------------
   app.post('/api/skinlib', async (request, reply) => {
-    const parts = request.parts();
+    const parts = await textureParts(request);
     let file: Buffer | null = null;
     let fileName = 'texture.png';
     let meta: Record<string, string> = {};
@@ -159,6 +160,9 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       if (part.type === 'file' && part.fieldname === 'file') {
         file = await part.toBuffer();
         fileName = part.filename || fileName;
+      } else if (part.type === 'file') {
+        part.file.resume();
+        return fail(reply, 400, '文件字段必须为 file');
       } else if (part.type === 'field') {
         meta[part.fieldname] = String(part.value ?? '');
         if (part.fieldname === 'csrf') csrf = String(part.value);

@@ -7,7 +7,7 @@ import { isAlexTexture } from '../src/services/batch-import.js';
 // Expected values were evaluated from the supplied PHP controllers/listeners.
 const rules: TextureEconomy = { publicStorage: 3, privateStorage: 25, closet: 2, uploadAward: 20, likeAward: 5, returnScore: true, takeBack: true };
 
-test('legacy upload reward is deducted before the affordability check, including private uploads', () => {
+test('approved content reward offsets public and private web upload costs', () => {
   assert.equal(uploadCost(1, true, rules), -15);
   assert.equal(uploadCost(1, false, rules), 7);
   assert.equal(uploadCost(10, true, rules), 12);
@@ -20,7 +20,8 @@ test('deletion refund and public upload award withdrawal are independent setting
   assert.equal(deletionScoreDelta(texture, { ...rules, returnScore: false }), -20);
   assert.equal(deletionScoreDelta(texture, { ...rules, takeBack: false }), 30);
   assert.equal(deletionScoreDelta(texture, { ...rules, returnScore: false, takeBack: false }), 0);
-  assert.equal(deletionScoreDelta({ size: 10, public: 0 }, rules), 250);
+  assert.equal(deletionScoreDelta({ size: 10, public: 0 }, rules), 230);
+  assert.equal(deletionScoreDelta({ size: 10, public: 0 }, { ...rules, uploadAward: 0 }), 250);
 });
 
 test('privacy switches match the supplied site economy, including award withdrawal', () => {

@@ -1,6 +1,7 @@
 import mysql2 from 'mysql2/promise';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from './config.js';
+import { formatLocalDate, parseLocalDate } from './services/datetime.js';
 
 export const pool = mysql2.createPool({
   host: config.db.host,
@@ -20,7 +21,8 @@ export type RowOrNull = Row | undefined | null;
 const transactionContext = new AsyncLocalStorage<mysql2.PoolConnection>();
 type CommitTask = () => void | Promise<void>;
 const commitTasks = new AsyncLocalStorage<CommitTask[]>();
-const tableNames = new Set(['users','players','textures','options','user_closet','uuid','reports','notifications','scopes','reg_link','mojang_verifications','textures_description','language_lines','jobs','ygg_log','oauth_clients','oauth_access_tokens','oauth_auth_codes','oauth_refresh_tokens','oauth_personal_access_clients','code_id_to_uuid','yggc_authorization_codes','yggc_device_codes','yggc_grants','yggc_interactions','yggc_refresh_tokens','yggc_sessions','mcn_oauth_identities','mcn_oauth_flows','mcn_email_challenges','mcn_web_sessions','mcn_registration_rewards','mcn_social_profiles','mcn_friendships']);
+const finishTasks = new AsyncLocalStorage<CommitTask[]>();
+const tableNames = new Set(['users','players','textures','options','user_closet','uuid','reports','notifications','scopes','reg_link','mojang_verifications','textures_description','language_lines','jobs','ygg_log','oauth_clients','oauth_access_tokens','oauth_auth_codes','oauth_refresh_tokens','oauth_personal_access_clients','code_id_to_uuid','yggc_authorization_codes','yggc_device_codes','yggc_grants','yggc_interactions','yggc_refresh_tokens','yggc_sessions','mcn_oauth_identities','mcn_oauth_flows','mcn_email_challenges','mcn_web_sessions','mcn_registration_rewards','mcn_social_profiles','mcn_friendships','mcn_texture_rewards','mcn_texture_uploads']);
 if (config.db.tablePrefix && !/^[a-zA-Z][a-zA-Z0-9_]{0,27}$/.test(config.db.tablePrefix)) throw new Error('Invalid DB_TABLE_PREFIX');
 
 /** Optional isolated validation namespace; production defaults to original names. */
@@ -71,16 +73,21 @@ export async function transaction<T>(fn: (conn: mysql2.PoolConnection) => Promis
   if (current) return fn(current);
   const conn = scopedConnection(await pool.getConnection());
   const tasks: CommitTask[] = [];
+  const finished: CommitTask[] = [];
   let result: T;
   try {
     await conn.beginTransaction();
-    result = await transactionContext.run(conn, () => commitTasks.run(tasks, () => fn(conn)));
+    result = await transactionContext.run(conn, () => commitTasks.run(tasks, () => finishTasks.run(finished, () => fn(conn))));
     await conn.commit();
   } catch (err) {
     await conn.rollback();
     throw err;
   } finally {
-    conn.release();
+    let cleanupFailed = false;
+    for (const task of finished) {
+      try { await task(); } catch { cleanupFailed = true; console.error('A transaction cleanup task failed.'); }
+    }
+    if (cleanupFailed) conn.destroy(); else conn.release();
   }
   for (const task of tasks) {
     try { await task(); } catch { console.error('A post-commit task failed; committed database state was retained.'); }
@@ -104,18 +111,16 @@ export function afterCommit(task: CommitTask): void {
   else void Promise.resolve().then(task).catch(() => console.error('A post-commit task failed.'));
 }
 
-// Local datetime formatting (DB stores local time like PHP/Carbon did).
-const tzOffsetMin = (() => {
-  // Fixed offset derived from TZ env var via a formatted date; cache at startup.
-  const now = new Date();
-  const local = now.toLocaleString('sv-SE', { timeZone: config.tz });
-  const asUtc = new Date(local.replace(' ', 'T') + 'Z');
-  return Math.round((asUtc.getTime() - now.getTime()) / 60000);
-})();
+/** Release connection-scoped resources after commit OR rollback, before pooling. */
+export function afterTransaction(task: CommitTask): void {
+  const tasks = finishTasks.getStore();
+  const connection = transactionContext.getStore();
+  if (!tasks || !connection) throw new Error('A transaction is required');
+  tasks.push(() => transactionContext.run(connection, task));
+}
 
 export function nowString(offsetSeconds = 0): string {
-  const d = new Date(Date.now() + offsetSeconds * 1000 + tzOffsetMin * 60000);
-  return d.toISOString().slice(0, 19).replace('T', ' ');
+  return dateToLocalString(new Date(Date.now() + offsetSeconds * 1000));
 }
 
 export function nowDate(offsetSeconds = 0): Date {
@@ -124,10 +129,10 @@ export function nowDate(offsetSeconds = 0): Date {
 
 /** Format a Date as 'YYYY-MM-DD HH:mm:ss' in the configured timezone. */
 export function dateToLocalString(d: Date): string {
-  return new Date(d.getTime() + tzOffsetMin * 60000).toISOString().slice(0, 19).replace('T', ' ');
+  return formatLocalDate(d, config.tz);
 }
 
 /** Parse 'YYYY-MM-DD HH:mm:ss' (stored local time) back to a UTC epoch. */
 export function localStringToEpoch(s: string): number {
-  return Date.parse(s.replace(' ', 'T') + 'Z') - tzOffsetMin * 60000;
+  return parseLocalDate(s, config.tz);
 }

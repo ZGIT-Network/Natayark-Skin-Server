@@ -5,6 +5,8 @@ import { parsePng } from './png.js';
 import { queryOne, insert, nowString, withTransaction } from '../db.js';
 import { saveTextureFile, validateTexturePng, type Texture } from './texture.js';
 import { sha256Hex } from '../util.js';
+import { lockTextureFile } from './texture-files.js';
+import { recordTextureReward, textureFingerprint } from './texture-rewards.js';
 
 export type BatchImportItem = { file: string; status: 'imported' | 'would-import' | 'duplicate' | 'invalid'; tid?: number; reason?: string; type?: Texture['type'] };
 export type BatchImportOptions = { uploader: number; directory: string; cape?: boolean; gbk?: boolean; dryRun?: boolean };
@@ -51,11 +53,13 @@ export async function batchImportTextures(options: BatchImportOptions): Promise<
       const type: Texture['type'] = options.cape ? 'cape' : isAlexTexture(parsePng(data)) ? 'alex' : 'steve';
       result.type = type;
       await withTransaction(async () => {
+        await lockTextureFile(hash);
         const existing = await queryOne<{ tid: number }>('SELECT tid FROM textures WHERE hash = ? LIMIT 1 FOR UPDATE', [hash]);
         if (existing) { result.status = 'duplicate'; result.tid = existing.tid; return; }
         if (options.dryRun !== false) { result.status = 'would-import'; return; }
         await saveTextureFile(hash, data);
         result.tid = await insert('INSERT INTO textures (name,type,size,hash,uploader,public,upload_at,likes) VALUES (?,?,?,?,?,1,?,0)', [name, type, Math.ceil(data.length / 1024), hash, options.uploader, nowString()]);
+        await recordTextureReward(result.tid, options.uploader, textureFingerprint(data), 0);
         result.status = 'imported';
       });
     } catch (error: any) { result.status = 'invalid'; result.reason = error.message; }

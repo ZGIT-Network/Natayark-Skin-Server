@@ -28,6 +28,22 @@ location / {
 }
 ```
 
+## 响应头与资源限制
+
+在已有 HTTPS `server` 块中可添加以下响应头；HSTS 不要放在纯 HTTP 监听或重定向块。应用也会返回基础响应头，代理配置应与之保持一致：
+
+```nginx
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Content-Security-Policy "base-uri 'self'; object-src 'none'; frame-ancestors 'none'" always;
+add_header Strict-Transport-Security "max-age=31536000" always;
+```
+
+基础 CSP 保留现有内联脚本和自定义 JS。收紧 `script-src` 前先部署报告策略，检查站点脚本、reCAPTCHA 和自定义内容，再逐步引入 nonce。代理请求大小上限应覆盖业务文件大小及表单字段开销。
+
+上传奖励、认证并发、动态缓存、私有/删除语义及文件回收配置见[资源与安全说明](security-hardening.md)。
+
 ## 持久化
 
 数据库、`.env` 和 `storage/` 应持久保存。`TEXTURE_DIR` 可指向独立材质目录。备份时同时保留数据库和材质，单独恢复其中一项可能出现缺失文件或过期引用。

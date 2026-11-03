@@ -40,7 +40,7 @@ export async function findUserByEmail(email: string): Promise<User | null> {
   return queryOne<User>('SELECT * FROM users WHERE email = ?', [email]);
 }
 
-export function checkUserPassword(user: User, plain: string): boolean {
+export function checkUserPassword(user: User, plain: string): Promise<boolean> {
   return verifyPassword(plain, user.password);
 }
 

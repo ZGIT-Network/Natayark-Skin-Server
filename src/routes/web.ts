@@ -197,7 +197,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     } else if (action === 'password') {
       const current = String(body.current_password ?? '');
       const next = String(body.password ?? '');
-      if (request.currentUser.password && !checkUserPassword(request.currentUser, current)) {
+      if (request.currentUser.password && !await checkUserPassword(request.currentUser, current)) {
         return reply.view('user/profile', { ...(await view(request)), error: '当前密码不正确', providers: await loadProviders() });
       }
       if (next.length < 8 || Buffer.byteLength(next) > 72) {
@@ -207,7 +207,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       await request.setSession(uid);
     } else if (action === 'email') {
       const email = String(body.email ?? '').trim().toLowerCase();
-      if (request.currentUser.password && !checkUserPassword(request.currentUser, String(body.current_password || ''))) return reply.code(403).view('user/profile', { ...(await view(request)), error: '修改邮箱需要输入当前密码', providers: await loadProviders() });
+      if (request.currentUser.password && !await checkUserPassword(request.currentUser, String(body.current_password || ''))) return reply.code(403).view('user/profile', { ...(await view(request)), error: '修改邮箱需要输入当前密码', providers: await loadProviders() });
       const dup = await findUserByEmail(email);
       if (dup && dup.uid !== uid) {
         return reply.view('user/profile', { ...(await view(request)), error: '该邮箱已被其他账户使用', providers: await loadProviders() });
@@ -476,7 +476,7 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
       'player_name_rule', 'player_name_length_min', 'player_name_length_max', 'custom_player_name_regexp',
       'register_with_player_name', 'local_login_enabled', 'regs_per_ip', 'require_verification', 'user_initial_score','recaptcha_sitekey','recaptcha_invisible',
       'score_per_player', 'max_players_per_user','mojang_verification_score_award','score_per_storage', 'private_score_per_storage', 'score_per_closet_item',
-      'score_award_per_texture', 'take_back_scores_after_deletion', 'status_code_for_private', 'return_score', 'score_award_per_like', 'reporter_score_modification', 'reporter_reward_score', 'sign_after_zero', 'content_policy',
+      'score_award_per_texture', 'upload_reward_daily_limit', 'take_back_scores_after_deletion', 'status_code_for_private', 'return_score', 'score_award_per_like', 'reporter_score_modification', 'reporter_reward_score', 'sign_after_zero', 'content_policy',
       'allow_downloading_texture', 'max_upload_file_size', 'sign_score', 'sign_gap_time', 'textures_description_limit',
       'ygg_uuid_algorithm', 'ygg_token_expire_1', 'ygg_token_expire_2', 'ygg_tokens_limit',
       'ygg_search_profile_max', 'ygg_skin_domain', 'ygg_disable_authserver',
@@ -535,6 +535,8 @@ export async function registerWebRoutes(app: FastifyInstance): Promise<void> {
     }
     const allowed = new Set(['site_name','site_name_zh_CN','site_name_en','site_url','site_description','site_description_zh_CN','site_description_en','announcement','announcement_zh_CN','announcement_en','copyright_text','player_name_rule','player_name_length_min','player_name_length_max','custom_player_name_regexp','register_with_player_name','local_login_enabled','regs_per_ip','require_verification','user_initial_score','score_per_player','score_per_storage','private_score_per_storage','score_per_closet_item','score_award_per_texture','score_award_per_like','reporter_score_modification','reporter_reward_score','return_score','take_back_scores_after_deletion','status_code_for_private','allow_downloading_texture','max_upload_file_size','sign_score','sign_gap_time','sign_after_zero','ygg_uuid_algorithm','ygg_token_expire_1','ygg_token_expire_2','ygg_tokens_limit','ygg_search_profile_max','ygg_skin_domain','ygg_disable_authserver','ygg_shared_client_id','yggc_device_code_expire','content_policy']);
     allowed.add('textures_description_limit');
+    allowed.add('upload_reward_daily_limit');
+    if (body.upload_reward_daily_limit !== undefined && (!/^\d{1,5}$/.test(body.upload_reward_daily_limit) || Number(body.upload_reward_daily_limit) > 10000)) return reply.redirect('/admin/settings?error=reward-limit#score');
     allowed.add('max_players_per_user');allowed.add('mojang_verification_score_award');
     if(body.max_players_per_user!==undefined&&(!/^\d{1,7}$/.test(body.max_players_per_user)||Number(body.max_players_per_user)>1000000))return reply.redirect('/admin/settings?error=player-limit#register');
     if(body.mojang_verification_score_award!==undefined&&(!/^\d{1,10}$/.test(body.mojang_verification_score_award)||Number(body.mojang_verification_score_award)>2147483647))return reply.redirect('/admin/settings?error=verification-reward#score');

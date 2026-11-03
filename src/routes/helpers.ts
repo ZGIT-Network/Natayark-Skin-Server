@@ -7,6 +7,7 @@ import { YggdrasilError, illegalArgument, forbiddenOperation } from './yggdrasil
 import { yggLog } from '../services/ygglog.js';
 import { withTransaction } from '../db.js';
 import { PNG } from 'pngjs';
+import { textureParts } from '../services/upload-limits.js';
 
 /**
  * Shared texture-upload routine used by the Yggdrasil Bearer endpoint and the
@@ -23,7 +24,7 @@ export async function uploadTextureDirect(request: FastifyRequest, reply: Fastif
 
   const contentType = String(request.headers['content-type'] ?? '');
   if (contentType.includes('multipart/form-data')) {
-    const parts = request.parts();
+    const parts = await textureParts(request);
     for await (const part of parts) {
       if (part.type === 'field' && part.fieldname === 'model') {
         modelName = String(part.value ?? 'default');
@@ -32,7 +33,7 @@ export async function uploadTextureDirect(request: FastifyRequest, reply: Fastif
         fileName = part.filename || fileName;
       } else if (part.type === 'file') {
         // ignore other files
-        await (part as any).toBuffer().catch(() => null);
+        part.file.resume();
       }
     }
   } else {

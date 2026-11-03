@@ -160,7 +160,8 @@
             <label class="field"><span class="label">公开材质 / KB</span><input class="input" name="score_per_storage" type="number" value="<%= values.score_per_storage %>"></label>
             <label class="field"><span class="label">私有材质 / KB</span><input class="input" name="private_score_per_storage" type="number" value="<%= values.private_score_per_storage %>"></label>
             <label class="field"><span class="label">衣柜单件消耗</span><input class="input" name="score_per_closet_item" type="number" value="<%= values.score_per_closet_item %>"></label>
-            <label class="field"><span class="label">上传奖励（公开 / 私有）</span><input class="input" name="score_award_per_texture" type="number" value="<%= values.score_award_per_texture %>"></label>
+            <label class="field"><span class="label">首次内容上传奖励</span><input class="input" name="score_award_per_texture" type="number" value="<%= values.score_award_per_texture %>"></label>
+            <label class="field"><span class="label">每人每日上传奖励次数</span><input class="input" name="upload_reward_daily_limit" type="number" min="0" max="10000" value="<%= values.upload_reward_daily_limit || '10' %>"><span class="text-muted">0 表示不发放；相同像素内容只奖励一次，删除后不会重置。</span></label>
             <label class="field"><span class="label">被他人收藏奖励</span><input class="input" name="score_award_per_like" type="number" value="<%= values.score_award_per_like %>"></label>
             <label class="field"><span class="label">提交举报积分变动</span><input class="input" name="reporter_score_modification" type="number" value="<%= values.reporter_score_modification %>"><span class="field-hint">正数为奖励，负数为扣除；最终按审核结果结算。</span></label>
             <label class="field"><span class="label">举报采纳额外奖励</span><input class="input" name="reporter_reward_score" type="number" value="<%= values.reporter_reward_score %>"></label>

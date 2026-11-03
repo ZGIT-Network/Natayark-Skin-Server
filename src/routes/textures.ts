@@ -19,6 +19,10 @@ async function cacheHeader(reply: any): Promise<void> {
   reply.header('Cache-Control', `public, max-age=${seconds}`);
 }
 
+function mutableCacheHeader(reply: any): void {
+  reply.header('Cache-Control', 'public, no-cache, max-age=0, must-revalidate');
+}
+
 const encodedPreviews = new Map<string, Buffer>();
 async function sendPng(reply: any, source: Buffer, lastModified?: Date): Promise<void> {
   const png = Object.hasOwn(reply.request.query ?? {}, 'png');
@@ -66,15 +70,18 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
     return sendPng(reply, pngToBuffer(renderSkin(data, 12, false)));
   });
   // Raw texture files (same as BS: publicly served by hash)
-  const rawHash = async (hash: string, request: any, reply: any) => {
+  const rawHash = async (hash: string, request: any, reply: any, mutable = false) => {
     if (!/^[0-9a-f]{64}$/.test(hash)) return reply.code(404).send();
+    // Private means unlisted; any existing material may still be fetched by hash.
+    // Removed/uncommitted files do not become a public download merely by existing.
+    if (!await queryOne('SELECT tid FROM textures WHERE hash=? LIMIT 1', [hash])) return reply.code(404).header('Cache-Control', 'no-store').send();
     try {
       // Open before sending so ENOENT maps to 404, not an async stream 500.
       const handle = await fs.promises.open(texturePath(hash), 'r');
       const stat = await handle.stat();
       reply.header('Content-Type', 'image/png').header('X-Content-Type-Options', 'nosniff');
       reply.header('ETag', `"${hash}"`).header('Last-Modified', stat.mtime.toUTCString());
-      await cacheHeader(reply);
+      if (mutable) mutableCacheHeader(reply); else await cacheHeader(reply);
       if (request.headers['if-none-match']?.split(',').map((v: string) => v.trim()).includes(`"${hash}"`)) {
         await handle.close();
         return reply.code(304).send();
@@ -98,7 +105,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
     const { tid } = request.params as { tid: string };
     const texture = await findTextureByTid(parseInt(tid, 10));
     if (!texture || !(await textureExists(texture.hash))) return reply.code(404).send();
-    return rawHash(texture.hash, request, reply);
+    return rawHash(texture.hash, request, reply, true);
   });
 
   // Avatars (legacy /avatar/*: head-only, 2d flat or ?3d isometric) ----------
@@ -107,7 +114,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
     const size = clampSize(query?.size, 1024);
     const mode = query?.['3d'] !== undefined ? '3d' : '2d';
     if (texture && texture.type !== 'steve' && texture.type !== 'alex') return reply.code(422).send();
-    if(mutable)reply.header('Cache-Control','public, max-age=0, must-revalidate');else await cacheHeader(reply);
+    mutableCacheHeader(reply);
     if (!texture) {
       return sendPng(reply, pngToBuffer(defaultAvatar(size, mode)));
     }
@@ -126,11 +133,12 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
   };
 
   app.get('/avatar/player/:name', async (request, reply) => {
+    mutableCacheHeader(reply);
     const { name } = request.params as { name: string };
     const player = await queryOne<any>('SELECT tid_skin FROM players WHERE name = ? LIMIT 1', [name]);
     if (!player) return reply.code(404).send();
     const texture = player && player.tid_skin > 0 ? await findTextureByTid(player.tid_skin) : null;
-    return avatarFromTexture(texture, request, reply);
+    return avatarFromTexture(texture, request, reply, true);
   });
 
   app.get('/avatar/user/:uid', async (request, reply) => {
@@ -160,7 +168,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
   // Previews (legacy /preview/*: two isometric body views; capes scale to ?height) ---
   const previewFromTexture = async (texture: Texture | null, request: any, reply: any) => {
     if (!texture) return reply.code(404).send();
-    await cacheHeader(reply);
+    mutableCacheHeader(reply);
     const height = clampSize(request.query?.height ?? 200, 2000);
     const key = `preview:${texture.tid}:${texture.hash}:${texture.type}:${texture.type === 'cape' ? height : 'body'}`;
     const cached = cacheGet(key);
@@ -190,6 +198,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
 
   // CustomSkinAPI R1: /{player}.json and /csl/{player}.json --------------------
   const cslHandler = async (request: any, reply: any) => {
+    mutableCacheHeader(reply);
     const playerParam = String(request.params.player ?? '');
     if (!playerParam.endsWith('.json')) return reply.code(404).send();
     const name = playerParam.slice(0, -5);
@@ -200,7 +209,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
 
     const [withTextures] = await attachTextures([player]);
     reply.header('Content-Type', 'application/json');
-    await cacheHeader(reply);
+    mutableCacheHeader(reply);
     reply.header('Last-Modified', new Date(localStringToEpoch(player.last_modified)).toUTCString());
     return { username: player.name, skins: { [withTextures.model ?? 'default']: withTextures.skin?.hash ?? null }, cape: withTextures.cape?.hash ?? null };
   };
@@ -209,6 +218,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
   app.get('/csl/:player', cslHandler);
 
   app.get('/usm/:player', async (request, reply) => {
+    mutableCacheHeader(reply);
     const part = String((request.params as any).player);
     if (!part.endsWith('.json')) return reply.code(404).send();
     const player = await queryOne<any>('SELECT p.*, u.permission FROM players p JOIN users u ON u.uid = p.uid WHERE p.name = ? LIMIT 1', [part.slice(0, -5)]);
@@ -216,11 +226,12 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
     if (player.permission < 0) return reply.code(403).send();
     const [profile] = await attachTextures([player]);
     const model = profile.model ?? 'default';
-    await cacheHeader(reply);
+    mutableCacheHeader(reply);
     return { player_name: player.name, last_update: Math.floor(localStringToEpoch(player.last_modified) / 1000), model_preference: [model], skins: { [model]: profile.skin?.hash ?? null }, cape: profile.cape?.hash ?? null };
   });
 
   for (const type of ['skin', 'cape'] as const) app.get(`/${type}/:player`, async (request, reply) => {
+    mutableCacheHeader(reply);
     const part = String((request.params as any).player);
     if (!part.endsWith('.png')) return reply.code(404).send();
     const player = await queryOne<any>('SELECT p.*, u.permission FROM players p JOIN users u ON u.uid = p.uid WHERE p.name = ? LIMIT 1', [part.slice(0, -4)]);
@@ -228,7 +239,7 @@ export async function registerTextureRoutes(app: FastifyInstance): Promise<void>
     if (player.permission < 0) return reply.code(403).send();
     const texture = await findTextureByTid(type === 'skin' ? player.tid_skin : player.tid_cape);
     if (!texture) return reply.code(404).send();
-    return rawHash(texture.hash, request, reply);
+    return rawHash(texture.hash, request, reply, true);
   });
 
   app.get('/user/config', async (request, reply) => {

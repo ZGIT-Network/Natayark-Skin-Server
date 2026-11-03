@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
+import { verifyPassword } from '../services/cipher.js';
 import { withTransaction, queryOne, localStringToEpoch } from '../db.js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
@@ -103,7 +103,7 @@ async function authenticateClient(request: FastifyRequest, clientIdParam?: strin
   const publicClient = isPublicClient(client) || await isSharedClient(client);
   if (!publicClient) {
     const expected = client.secret ?? '';
-    const valid = clientSecret && (expected.startsWith('$2') ? bcrypt.compareSync(clientSecret, expected) : crypto.timingSafeEqual(crypto.createHash('sha256').update(clientSecret).digest(), crypto.createHash('sha256').update(expected).digest()));
+    const valid = clientSecret && (expected.startsWith('$2') ? await verifyPassword(clientSecret, expected) : crypto.timingSafeEqual(crypto.createHash('sha256').update(clientSecret).digest(), crypto.createHash('sha256').update(expected).digest()));
     if (!valid) {
       return { error: 'invalid_client', error_description: 'Client authentication failed' };
     }

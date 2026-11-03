@@ -7,6 +7,8 @@ import { sha256Hex } from '../util.js';
 import { PNG } from 'pngjs';
 import { queueTextureProfileRefresh } from './integrations.js';
 import { parsePng } from './png.js';
+import { lockTextureFile } from './texture-files.js';
+import { textureFingerprint, seedLegacyTextureRewards, eligibleTextureReward, recordTextureReward, outstandingTextureReward } from './texture-rewards.js';
 
 export type Texture = {
   tid: number;
@@ -79,14 +81,14 @@ export type TextureEconomy = {
   takeBack: boolean;
 };
 
-/** Arithmetic follows SkinlibController and UpdateScoreForDeletedTexture exactly. */
+/** The legacy net-cost formula receives only the approved content reward. */
 export function uploadCost(size: number, isPublic: boolean, rules: TextureEconomy): number {
   return size * (isPublic ? rules.publicStorage : rules.privateStorage) + rules.closet - rules.uploadAward;
 }
 
 export function deletionScoreDelta(texture: Pick<Texture, 'size' | 'public'>, rules: TextureEconomy): number {
   return (rules.returnScore ? texture.size * (texture.public ? rules.publicStorage : rules.privateStorage) : 0)
-    - (texture.public && rules.takeBack ? rules.uploadAward : 0);
+    - (rules.takeBack ? rules.uploadAward : 0);
 }
 
 export function privacyScoreDelta(texture: Pick<Texture, 'size' | 'public'>, rules: TextureEconomy): number {
@@ -116,8 +118,8 @@ export async function uploadTexture(
   file: { data: Buffer; name: string },
   options: { source?: 'web' | 'yggdrasil'; description?: string } = {}
 ): Promise<UploadResult> {
-  const maxFileSize = await getOptionInt('max_upload_file_size', 1024);
-  if (file.data.length > maxFileSize * 1024) return { ok: false, reason: 'file-too-large' };
+  const { uploadByteLimit } = await import('./upload-limits.js');
+  if (file.data.length > await uploadByteLimit()) return { ok: false, reason: 'file-too-large' };
   if (!(await textureNameValid(meta.name))) return { ok: false, reason: 'invalid-name' };
 
   const validation = await validateTexturePng(file.data, meta.type, meta.type === 'alex');
@@ -127,20 +129,24 @@ export async function uploadTexture(
 
   const hash = sha256Hex(file.data);
   const kbSize = Math.ceil(file.data.length / 1024);
+  const fingerprint = textureFingerprint(file.data);
   const rules = await economy();
   const isYggdrasil = options.source === 'yggdrasil';
   // ProfileController deliberately grants no upload award on Yggdrasil uploads.
-  const cost = isYggdrasil ? kbSize * rules.privateStorage + rules.closet : uploadCost(kbSize, meta.isPublic, rules);
   return withTransaction<UploadResult>(async () => {
+    await lockUsers([uploader.uid]);
+    await lockTextureFile(hash);
     // A locking range read also serializes same-hash insertions in InnoDB.
     const duplicate = await queryOne<Texture>(
       `SELECT * FROM textures WHERE hash = ? AND ${isYggdrasil ? 'uploader = ?' : '(public = 1 OR uploader = ?)'} ORDER BY tid LIMIT 1 FOR UPDATE`,
       [hash, uploader.uid]
     );
     if (duplicate) return { ok: true, texture: duplicate, cost: 0, duplicate: true };
-    await lockUsers([uploader.uid]);
     const user = await queryOne<{ score: number; permission: number }>('SELECT score, permission FROM users WHERE uid = ?', [uploader.uid]);
     if (!user || user.permission < 0) return { ok: false, reason: 'forbidden' };
+    await seedLegacyTextureRewards(uploader.uid, rules.uploadAward);
+    const award = !isYggdrasil ? await eligibleTextureReward(uploader.uid, fingerprint, rules.uploadAward) : 0;
+    const cost = isYggdrasil ? kbSize * rules.privateStorage + rules.closet : uploadCost(kbSize, meta.isPublic, { ...rules, uploadAward: award });
     if (cost > user.score) return { ok: false, reason: 'lack_score' };
     // Save first: a filesystem failure must not commit a record with a missing image.
     await saveTextureFile(hash, file.data);
@@ -149,6 +155,7 @@ export async function uploadTexture(
       [meta.name, type, hash, kbSize, uploader.uid, meta.isPublic ? 1 : 0, nowString()]
     );
     await exec('INSERT INTO user_closet (user_uid, texture_tid, item_name) VALUES (?, ?, ?)', [uploader.uid, tid, meta.name]);
+    await recordTextureReward(tid, uploader.uid, fingerprint, award);
     if (options.description) await setDescription(tid, options.description);
     await exec('UPDATE users SET score = score - ? WHERE uid = ?', [cost, uploader.uid]);
     return { ok: true, texture: (await findTextureByTid(tid))!, cost, duplicate: false };
@@ -189,8 +196,10 @@ export async function deleteTexture(texture: Texture): Promise<void> {
     await lockUsers([texture.uploader]);
     const current = await queryOne<Texture>('SELECT * FROM textures WHERE tid = ? FOR UPDATE', [texture.tid]);
     if (!current) return; // repeated DELETE must not refund twice
+    await seedLegacyTextureRewards(current.uploader, rules.uploadAward);
     await queueTextureProfileRefresh(current.tid);
-    const delta = deletionScoreDelta(current, rules);
+    const awarded = await outstandingTextureReward(current.tid, rules.uploadAward);
+    const delta = deletionScoreDelta(current, { ...rules, uploadAward: awarded });
     if (delta) await exec('UPDATE users SET score = score + ? WHERE uid = ?', [delta, current.uploader]);
     // Core CleanUpCloset refunds other users, while the uploader's storage refund
     // is handled above. Reports are retained for the review/audit history.
@@ -202,6 +211,7 @@ export async function deleteTexture(texture: Texture): Promise<void> {
     await exec('UPDATE players SET tid_skin = 0, last_modified = ? WHERE tid_skin = ?', [nowString(), current.tid]);
     await exec('UPDATE players SET tid_cape = 0, last_modified = ? WHERE tid_cape = ?', [nowString(), current.tid]);
     await exec('DELETE FROM textures WHERE tid = ?', [current.tid]);
+    await exec('DELETE FROM mcn_texture_uploads WHERE texture_id = ?', [current.tid]);
   });
   // Unreferenced immutable files are retained until a separate garbage-collection
   // pass. Deleting here is unsafe when an outer report transaction rolls back,
@@ -217,16 +227,19 @@ export async function setTexturePrivacy(texture: Texture, isPublic: boolean): Pr
     const current = await queryOne<Texture>('SELECT * FROM textures WHERE tid = ? FOR UPDATE', [texture.tid]);
     if (!current) return { ok: false, reason: 'not_found' };
     if (!!current.public === isPublic) return { ok: true };
+    await seedLegacyTextureRewards(current.uploader, rules.uploadAward);
     if (isPublic) {
       const dup = await queryOne<{ tid: number }>('SELECT tid FROM textures WHERE hash = ? AND public = 1 AND tid <> ? LIMIT 1 FOR UPDATE', [current.hash, current.tid]);
       if (dup) return { ok: false, reason: 'duplicate', duplicateTid: dup.tid };
     }
-    const delta = privacyScoreDelta(current, rules);
+    const awarded = await outstandingTextureReward(current.tid, rules.uploadAward);
+    const delta = privacyScoreDelta(current, { ...rules, uploadAward: awarded });
     const user = await queryOne<{ score: number }>('SELECT score FROM users WHERE uid = ?', [current.uploader]);
     if (!user || user.score + delta < 0) return { ok: false, reason: 'lack_score' };
     await queueTextureProfileRefresh(current.tid);
     await exec('UPDATE users SET score = score + ? WHERE uid = ?', [delta, current.uploader]);
     await exec('UPDATE textures SET public = ? WHERE tid = ?', [isPublic ? 1 : 0, current.tid]);
+    if (current.public && rules.takeBack) await exec('UPDATE mcn_texture_uploads SET reward_remaining=0 WHERE texture_id=?', [current.tid]);
     if (!isPublic) {
       if (rules.returnScore && rules.closet) {
         await exec('UPDATE users u JOIN user_closet c ON c.user_uid = u.uid SET u.score = u.score + ? WHERE c.texture_tid = ? AND c.user_uid <> ?', [rules.closet, current.tid, current.uploader]);

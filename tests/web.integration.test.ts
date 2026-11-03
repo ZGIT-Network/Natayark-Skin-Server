@@ -118,7 +118,7 @@ test('texture pages: upload pricing, closet prerequisite, applied state and erro
       await setPlayerTexture(first,'skin',skinA.tid);
       const initial=await app.inject(url);
       assert.equal(initial.statusCode,200);assert.deepEqual(initial.rawPayload,expectedA.rawPayload);
-      assert.equal(initial.headers['cache-control'],'public, max-age=0, must-revalidate');
+      assert.equal(initial.headers['cache-control'],'public, no-cache, max-age=0, must-revalidate');
       assert.equal((await app.inject({url,headers:{'if-none-match':String(initial.headers.etag)}})).statusCode,304);
       await setPlayerTexture(first,'skin',skinB.tid);
       const changed=await app.inject({url,headers:{'if-none-match':String(initial.headers.etag)}});
@@ -163,7 +163,8 @@ test('texture pages: upload pricing, closet prerequisite, applied state and erro
         ['public-storage', 'score_per_storage', 3], ['private-storage', 'private_score_per_storage', 25],
         ['closet-cost', 'score_per_closet_item', 2], ['upload-award', 'score_award_per_texture', 0],
       ] as const) assert.ok(page.body.includes(`data-${attribute}="${await getOptionInt(option, fallback)}"`));
-      assert.match(page.body, /上传奖励（公开 \/ 私有）/);
+      assert.match(page.body, /首次内容上传奖励/);
+      assert.match(page.body, /持有材质链接的人仍可读取图片/);
     });
     await t.test('uncollected texture is disabled with a visible instruction', async () => {
       const page = await detail();

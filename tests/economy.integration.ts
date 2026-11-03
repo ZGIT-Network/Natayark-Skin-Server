@@ -20,7 +20,8 @@ const { uploadTexture, closetAdd, closetRemove, setTexturePrivacy, deleteTexture
 const { addPlayer, bindSinglePlayer, deletePlayer, setPlayerTexture, findPlayerByPid } = await import('../src/services/player.js');
 const { registerTextureRoutes } = await import('../src/routes/textures.js');
 const { batchImportTextures } = await import('../src/services/batch-import.js');
-const tables = ['options', 'users', 'players', 'uuid', 'textures', 'user_closet', 'textures_description'];
+const { collectTextureGarbage, lockTextureFile } = await import('../src/services/texture-files.js');
+const tables = ['options', 'users', 'players', 'uuid', 'textures', 'user_closet', 'textures_description', 'mcn_texture_rewards', 'mcn_texture_uploads'];
 const created: string[] = [];
 let imageNumber = 0, checks = 0;
 const app = Fastify();
@@ -60,6 +61,34 @@ try {
   const duplicate = await upload(other, true, await fs.readFile(path.join(config.textureDir, uploaded.texture.hash)));
   check(duplicate.duplicate && duplicate.texture.tid === uploaded.texture.tid && await score(other) === 100, 'public duplicate does not insert, charge or implicitly collect');
 
+  const abuseOwner = await user(1000), originalImage = image();
+  const firstReward = await upload(abuseOwner, true, originalImage);
+  const samePixels = await Promise.all(Array.from({ length: 4 }, (_, index) => upload(abuseOwner, true, Buffer.concat([originalImage, Buffer.from('metadata-' + index)]))));
+  check(firstReward.cost === -15 && samePixels.every(result => result.cost === 5), 'concurrent PNG byte variants receive the content reward once');
+  const beforeSuppressedDelete = await score(abuseOwner);
+  await deleteTexture(samePixels[0].texture);
+  check(await score(abuseOwner) === beforeSuppressedDelete + 3, 'deleting an unrewarded variant does not claw back an award it never received');
+  await deleteTexture(firstReward.texture);
+  const repeatedReward = await upload(abuseOwner, true, originalImage);
+  check(repeatedReward.cost === 5, 'deleting and reuploading does not reset the persistent content claim');
+  const privateReward = await upload(abuseOwner, false);
+  check(privateReward.cost === 7, 'private web uploads retain the configured reward under the same claim limits');
+  const privateBalance = await score(abuseOwner);
+  await deleteTexture(privateReward.texture);
+  check(await score(abuseOwner) === privateBalance + 5, 'private material deletion refunds storage and claws back its actual reward');
+  await setOption('upload_reward_daily_limit', '2');
+  const cappedOwner = await user(1000);
+  const daily = await Promise.all([upload(cappedOwner), upload(cappedOwner), upload(cappedOwner)]);
+  check(daily.filter(result => result.cost === -15).length === 2 && daily.filter(result => result.cost === 5).length === 1, 'daily reward cap is enforced under concurrent different uploads');
+  await setOption('upload_reward_daily_limit', '10');
+
+  const publicAgain = await upload(await user(1000));
+  const originalBalance = await score(publicAgain.texture.uploader);
+  await setTexturePrivacy(publicAgain.texture, false);
+  await setTexturePrivacy((await findTextureByTid(publicAgain.texture.tid))!, true);
+  await setTexturePrivacy((await findTextureByTid(publicAgain.texture.tid))!, false);
+  check(await score(publicAgain.texture.uploader) === originalBalance - 42, 'repeated privacy switches claw back the actual upload award only once');
+
   const results = await Promise.all(Array.from({ length: 8 }, () => closetAdd(other, uploaded.texture.tid, 'collected')));
   check(results.filter((r) => r.ok).length === 1 && await score(other) === 98, 'concurrent duplicate closet additions charge only once');
   check((await findTextureByTid(uploaded.texture.tid))!.likes === 2 && await score(owner) === 20, 'collecting updates likes and awards uploader once');
@@ -89,9 +118,10 @@ try {
   check(purchases.filter((r) => r.ok).length === 1 && await score(poor) === 0, 'concurrent different purchases cannot spend the same balance twice');
 
   const rollbackOwner = await user(100);
-  let rolledTid = 0;
+  let rolledTid = 0, rolledHash = '';
   await assert.rejects(withTransaction(async () => {
-    rolledTid = (await upload(rollbackOwner)).texture.tid;
+    const rolled = await upload(rollbackOwner);
+    rolledTid = rolled.texture.tid; rolledHash = rolled.texture.hash;
     throw new Error('rollback fixture');
   }), /rollback fixture/);
   check(await score(rollbackOwner) === 100 && !(await findTextureByTid(rolledTid)), 'outer transaction rollback restores score, upload and closet atomically');
@@ -127,6 +157,14 @@ try {
   await registerTextureRoutes(app);
   await app.ready();
   const hashUrl = `/textures/${uploaded.texture.hash}`;
+  check((await app.inject('/textures/' + rolledHash)).statusCode === 404, 'rolled-back upload files are not publicly served');
+  const orphanPath = path.join(config.textureDir, rolledHash);
+  await collectTextureGarbage({ apply: true });
+  check((await fs.stat(orphanPath)).isFile(), 'retention period protects recent transaction orphans');
+  const orphanOld = new Date(Date.now() - 48 * 3600_000);
+  await fs.utimes(orphanPath, orphanOld, orphanOld);
+  await collectTextureGarbage({ apply: true });
+  check(!await fs.stat(orphanPath).catch(() => null), 'expired transaction orphans are safely collected after rollback releases the lock');
   const raw = await app.inject(hashUrl);
   check(raw.statusCode === 200 && raw.headers['content-type'] === 'image/png' && raw.headers.etag === `"${uploaded.texture.hash}"`, 'raw texture has PNG MIME and content-addressed ETag');
   check((await app.inject({ url: hashUrl, headers: { 'if-none-match': raw.headers.etag! } })).statusCode === 304, 'raw conditional GET returns 304');
@@ -138,6 +176,10 @@ try {
   const usm = await app.inject(`/usm/skin${suffix}.json`);
   check(usm.statusCode === 200 && usm.json().skins.default === uploaded.texture.hash && Number.isInteger(usm.json().last_update), 'USM provides skin hash and Unix last_update');
   check((await app.inject(`/skin/skin${suffix}.png`)).statusCode === 200 && (await app.inject(`/cape/skin${suffix}.png`)).statusCode === 404, 'legacy PNG routes resolve the player skin and missing cape');
+  for (const url of [`/avatar/player/skin${suffix}`, `/csl/skin${suffix}.json`, `/usm/skin${suffix}.json`, `/skin/skin${suffix}.png`]) {
+    check(/(?:no-cache|max-age=0)/.test(String((await app.inject(url)).headers['cache-control'])), 'dynamic texture alias revalidates: ' + url);
+  }
+  check(!/max-age=0/.test(String(raw.headers['cache-control'])), 'content-addressed raw files keep a long cache lifetime');
   check((await app.inject(`/avatar/user/${other}`)).statusCode===200, 'equipped skin takes priority over enabled Gravatar provider');
   await exec('UPDATE players SET tid_skin=0 WHERE pid=?',[pid]);
   check((await app.inject(`/avatar/user/${other}`)).headers.location?.startsWith('https://weavatar.com/avatar/'), 'enabled Gravatar provider is a fallback when no skin is equipped');
@@ -145,6 +187,33 @@ try {
   check((await app.inject('/user/config')).statusCode === 302, 'configuration download requires a logged-in user');
   const downloaded = await app.inject({ url: '/user/config?download=csl', headers: { 'x-test-uid': String(other) } });
   check(downloaded.statusCode === 200 && downloaded.headers['content-disposition'] === 'attachment; filename="CustomSkinLoader.json"' && downloaded.json().loadlist[0].type === 'CustomSkinAPI', 'CSL configuration download preserves site-first ordering and attachment name');
+
+  const deletedFile = await upload(await user(1000));
+  await deleteTexture(deletedFile.texture);
+  const deletedPath = path.join(config.textureDir, deletedFile.texture.hash);
+  check((await fs.stat(deletedPath)).isFile() && (await app.inject('/textures/' + deletedFile.texture.hash)).statusCode === 404, 'deleted material stops serving at origin before delayed file cleanup');
+  check((await app.inject({ url: '/textures/' + deletedFile.texture.hash, headers: { 'if-none-match': '"' + deletedFile.texture.hash + '"' } })).statusCode === 404, 'deleted material cannot return 304 to an old validator');
+  const old = new Date(Date.now() - 48 * 3600_000);
+  await fs.utimes(deletedPath, old, old);
+  const gcDry = await collectTextureGarbage();
+  check(gcDry.eligible > 0 && (await fs.stat(deletedPath)).isFile(), 'garbage collection dry-run retains files');
+  await collectTextureGarbage({ apply: true });
+  check(!await fs.stat(deletedPath).catch(() => null) && (await fs.stat(path.join(config.textureDir, uploaded.texture.hash))).isFile(), 'garbage collection removes old orphans and retains referenced content');
+
+  const racingHash = crypto.createHash('sha256').update(image()).digest('hex'), racingPath = path.join(config.textureDir, racingHash);
+  await fs.writeFile(racingPath, image()); await fs.utimes(racingPath, old, old);
+  let unlock!: () => void, locked!: () => void;
+  const lockedSignal = new Promise<void>(resolve => { locked = resolve; });
+  const waitForCommit = new Promise<void>(resolve => { unlock = resolve; });
+  const writer = withTransaction(async () => {
+    await lockTextureFile(racingHash); locked(); await waitForCommit;
+    await insert('INSERT INTO textures (name,type,hash,size,uploader,public,upload_at,likes) VALUES (?,?,?,1,?,1,?,0)', ['race', 'steve', racingHash, other, nowString()]);
+  });
+  await lockedSignal;
+  const collector = collectTextureGarbage({ apply: true });
+  await new Promise(resolve => setTimeout(resolve, 30)); unlock();
+  await Promise.all([writer, collector]);
+  check((await fs.stat(racingPath)).isFile(), 'collector rechecks references after an overlapping upload commits');
 
   const importDirectory = path.join(config.textureDir, 'import-fixtures');
   await fs.mkdir(importDirectory);

@@ -4,7 +4,6 @@ import cookie from '@fastify/cookie';
 import formbody from '@fastify/formbody';
 import multipart from '@fastify/multipart';
 import staticFiles from '@fastify/static';
-import rateLimit from '@fastify/rate-limit';
 import view from '@fastify/view';
 import ejs from 'ejs';
 import { config, isDev } from './config.js';
@@ -29,6 +28,11 @@ import { ROOT_DIR } from './config.js';
 import { captureApiHandlers, registerCompatRoutes } from './routes/compat.js';
 import { pageContext } from './routes/page-context.js';
 import { maskUuid } from './services/uuid.js';
+import { registerRequestLimits } from './services/request-limits.js';
+import { registerUploadLimits, MAX_UPLOAD_BYTES } from './services/upload-limits.js';
+import { collectTextureGarbage } from './services/texture-files.js';
+import { boundedEnv } from './services/work-limit.js';
+import { registerSecurityHeaders } from './services/security-headers.js';
 
 
 export async function createApp() {
@@ -48,12 +52,18 @@ const app = Fastify({
     : { level: 'warn', redact: ['req.headers.authorization','req.headers.cookie','res.headers.set-cookie'] },
   trustProxy: config.trustProxy,
   bodyLimit: 16 * 1024 * 1024,
+  requestTimeout: 120_000,
+  connectionTimeout: 30_000,
 });
 const handlers = captureApiHandlers(app);
 
+await registerRequestLimits(app);
+registerUploadLimits(app);
+registerSecurityHeaders(app, !isDev);
+
 await app.register(cookie);
 await app.register(formbody);
-await app.register(multipart, { limits: { fileSize: 64 * 1024 * 1024, files: 4 } });
+await app.register(multipart, { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 16, fieldSize: 65536, parts: 17 } });
 
 // Canonical loopback origin. Cookies and the OAuth redirect_uri bind to
 // PUBLIC_ORIGIN, so browsing via a different loopback alias (localhost vs
@@ -167,19 +177,6 @@ app.setNotFoundHandler(async (request, reply) => {
   return reply.code(404).view('error', { ...(await pageContext(request, '404')), code: 404, message: '页面不存在。' });
 });
 
-// Rate limiting for the auth endpoints (brute-force protection)
-await app.register(rateLimit, {
-  global: false,
-  max: (request) => {
-    const url = request.raw.url ?? '';
-    if (url.startsWith('/api/yggdrasil/authserver')) return Math.max(10, config.yggRateLimit);
-    if (url.startsWith('/auth/login') || url.startsWith('/auth/register')) return 30;
-    return 1000;
-  },
-  timeWindow: '1 minute',
-  keyGenerator: (request) => request.ip,
-});
-
 // --- Register route groups ----------------------------------------------------
 await registerApplicationRoutes(app);
 await registerSharingRoutes(app);
@@ -198,5 +195,14 @@ await registerManagementRoutes(app, handlers);
   await ensureSigningKey();
   await getSystemClientId();
   await loadPlayerNameRules();
+  let collection: Promise<unknown> | undefined;
+  const timer = setInterval(() => {
+    if (collection) return;
+    collection = collectTextureGarbage({ apply: true, retentionMs: boundedEnv('TEXTURE_GC_RETENTION_HOURS', 24, 8760) * 3600_000 })
+      .catch(error => app.log.error(error, 'Texture garbage collection failed'))
+      .finally(() => { collection = undefined; });
+  }, boundedEnv('TEXTURE_GC_INTERVAL_MINUTES', 60, 10080) * 60_000);
+  timer.unref();
+  app.addHook('onClose', async () => { clearInterval(timer); await collection; });
   return app;
 }

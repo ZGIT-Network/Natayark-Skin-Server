@@ -85,7 +85,7 @@ async function completeLegacyOAuth(flowToken: string, sid: string, passwordProof
     const [rows]=await conn.query<any[]>('SELECT uid,email,permission,password FROM users WHERE uid=? FOR UPDATE',[flow.legacyUid]);
     const user=rows[0];
     if(!user||user.permission<0||user.email.trim().toLowerCase()!==flow.email)throw new Error('原账户状态或邮箱已变化，请重新授权');
-    if(passwordProof!==undefined&&!checkUserPassword(user,passwordProof))throw new Error('原账户密码已变化，请重新验证');
+    if(passwordProof!==undefined&&!await checkUserPassword(user,passwordProof))throw new Error('原账户密码已变化，请重新验证');
     const identity=await findIdentity(flow.provider,flow.remote.id);
     if(identity&&identity.user_id!==user.uid)throw new Error('该第三方身份已绑定其他账户');
     if(!identity&&!await linkIdentity(user.uid,flow.provider,flow.remote))throw new Error('此账户已有该提供方的其他绑定，请使用原登录方式');
@@ -116,7 +116,7 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
     const identification=String(body.identification??body.email??'').trim();
     const player=EMAIL.test(identification)?null:await findPlayerByName(identification);
     const user=EMAIL.test(identification)?await findUserByEmail(identification.toLowerCase()):player?await findUserByUid(player.uid):null;
-    if (!user || user.permission === PERMISSION_BANNED || !checkUserPassword(user, String(body.password || ''))) {await recordLoginFailure(request.ip);return fail('账户或密码不正确');}
+    if (!user || user.permission === PERMISSION_BANNED || !await checkUserPassword(user, String(body.password || ''))) {await recordLoginFailure(request.ip);return fail('账户或密码不正确');}
     await clearLoginFailures(request.ip);
     if (needsRehash(user.password)) await changeUserPassword(user.uid, body.password);
     await clearSessionCookie(reply, request);
@@ -289,7 +289,7 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
     const user=await findUserByUid(flow.legacyUid);
     if(!user||user.permission<0||user.email.trim().toLowerCase()!==flow.email)return failPage(reply,base,'原账户状态已变化，请重新授权',409);
     if(body.method==='password'){
-      if(!user.password||!checkUserPassword(user,String(body.password??'')))return render('原账户密码不正确；没有设置过密码的账户请验证原邮箱');
+      if(!user.password||!await checkUserPassword(user,String(body.password??'')))return render('原账户密码不正确；没有设置过密码的账户请验证原邮箱');
       try{
         const linked=await completeLegacyOAuth(token,request.session.sid,String(body.password??''));
         if(!linked)return render('账户衔接会话已失效，请重新授权');
@@ -426,7 +426,7 @@ export async function registerAuthRoutes(app: FastifyInstance, view: View): Prom
     const body = textBody(request), user = request.currentUser;
     const fail = async (error: string) => reply.code(400).view('auth/set-password', { ...(await view(request)), hasPassword: !!user.password, error });
     if (!request.checkCsrf(body.csrf)) return fail('会话已过期');
-    if (user.password && !checkUserPassword(user, String(body.current_password || ''))) return fail('当前密码不正确');
+    if (user.password && !await checkUserPassword(user, String(body.current_password || ''))) return fail('当前密码不正确');
     if (String(body.password || '').length < 8 || Buffer.byteLength(String(body.password || '')) > 72) return fail('密码为 8–72 字节');
     await changeUserPassword(user.uid, body.password);
     await request.setSession(user.uid);

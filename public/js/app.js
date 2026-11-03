@@ -444,9 +444,10 @@
       var size = Math.ceil(file.size / 1024);
       var visibility = uploadForm.querySelector('[name="public"]:checked');
       var rate = Number(visibility && visibility.value === '1' ? uploadForm.dataset.publicStorage : uploadForm.dataset.privateStorage);
-      var cost = size * rate + Number(uploadForm.dataset.closetCost) - Number(uploadForm.dataset.uploadAward);
-      var insufficient = cost > Number(uploadForm.dataset.score);
-      estimate.textContent = '文件 ' + size + ' KB · ' + (cost < 0 ? '预计获得 ' + (-cost) : '预计消耗 ' + cost) + ' 积分（已计入衣柜费用和上传奖励）' + (insufficient ? '，当前积分不足。' : '。');
+      var cost = size * rate + Number(uploadForm.dataset.closetCost);
+      var possibleAward = Math.max(0, Number(uploadForm.dataset.uploadAward));
+      var insufficient = cost - possibleAward > Number(uploadForm.dataset.score);
+      estimate.textContent = '文件 ' + size + ' KB · 存储与衣柜费用 ' + cost + ' 积分' + (possibleAward ? '，符合首次内容及每日次数规则时可抵扣奖励 ' + possibleAward + ' 积分' : '') + (insufficient ? '，当前积分不足。' : '。');
       estimate.classList.toggle('text-destructive', insufficient);
       estimate.classList.toggle('text-muted-foreground', !insufficient);
     }

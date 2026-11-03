@@ -1,6 +1,6 @@
 {
   "name": "natayark-skin-server",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Self-hosted Minecraft skin server with Yggdrasil authentication and Yggdrasil Connect.",
   "private": true,
   "license": "MIT",
@@ -44,9 +44,10 @@
     "css": "tailwindcss -i ./src/styles/app.css -o ./public/css/app.css --minify",
     "typecheck": "tsc -p . --noEmit",
     "migrate": "tsx scripts/migrate.ts",
-    "test": "node --import tsx --test tests/auth.test.ts tests/economy.test.ts tests/theme.test.ts tests/render.test.ts tests/client-feedback.test.ts tests/search.test.ts tests/usage.test.ts",
+    "test": "node --import tsx --test tests/auth.test.ts tests/economy.test.ts tests/theme.test.ts tests/render.test.ts tests/client-feedback.test.ts tests/search.test.ts tests/usage.test.ts tests/resource-controls.test.ts",
     "test:integration": "node scripts/test-integration.mjs",
-    "test:friends:client": "node --import tsx --test tests/friends-authlib.integration.test.ts"
+    "test:friends:client": "node --import tsx --test tests/friends-authlib.integration.test.ts",
+    "textures:gc": "tsx scripts/collect-textures.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
@@ -55,9 +56,10 @@
     "@fastify/rate-limit": "^11.2.1",
     "@fastify/static": "^10.1.8",
     "@fastify/view": "^12.0.1",
+    "@js-temporal/polyfill": "^0.5.1",
     "@node-rs/argon2": "^2.2.2",
+    "@node-rs/bcrypt": "^2.0.0",
     "@sicons/ionicons5": "^0.13.0",
-    "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.9",
     "ejs": "^7.0.2",
     "fastify": "^5.12.8",

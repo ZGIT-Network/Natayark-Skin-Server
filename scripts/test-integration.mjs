@@ -19,6 +19,7 @@ for (const file of [
   'tests/friends.integration.test.ts',
   'tests/first-start.integration.test.ts',
   'tests/migration.integration.test.ts',
+  'tests/resource-controls.integration.test.ts',
 ]) {
   console.log('\nRunning ' + file);
   const result = spawnSync(process.execPath, ['--import', 'tsx', ...(file.endsWith('.test.ts') ? ['--test'] : []), file], { stdio: 'inherit', env:{...process.env,MAIL_HOST:'',MAIL_FROM_ADDRESS:''} });

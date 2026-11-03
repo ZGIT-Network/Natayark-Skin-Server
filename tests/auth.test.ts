@@ -42,17 +42,17 @@ test('all legacy digest ciphers preserve PHP vectors and reject wrong passwords'
     for (const [method, expected] of Object.entries(vectors)) {
       process.env.PWD_METHOD = method;
       assert.equal(await hashPassword('password'), expected, method);
-      assert.equal(verifyPassword('password', expected), true, method);
-      assert.equal(verifyPassword('incorrect', expected), false, method);
+      assert.equal(await verifyPassword('password', expected), true, method);
+      assert.equal(await verifyPassword('incorrect', expected), false, method);
     }
     for (const method of ['BCRYPT', 'PHP_PASSWORD_HASH', 'ARGON2I']) {
       process.env.PWD_METHOD = method;
       const hash = await hashPassword('password');
-      assert.equal(verifyPassword('password', hash), true);
-      assert.equal(verifyPassword('incorrect', hash), false);
+      assert.equal(await verifyPassword('password', hash), true);
+      assert.equal(await verifyPassword('incorrect', hash), false);
       if (method !== 'ARGON2I') assert.match(hash, /^\$2y\$/);
     }
-    assert.equal(verifyPassword('password', '$argon2i$v=19$m=1024,t=2,p=1$AQEBAQEBAQEBAQEBAQEBAQ$ffxVmiukv0IwXD56kXxpcag8AtD+2/yweVSZlaX25MU'), true);
+    assert.equal(await verifyPassword('password', '$argon2i$v=19$m=1024,t=2,p=1$AQEBAQEBAQEBAQEBAQEBAQ$ffxVmiukv0IwXD56kXxpcag8AtD+2/yweVSZlaX25MU'), true);
   } finally {
     if (previous.method === undefined) delete process.env.PWD_METHOD; else process.env.PWD_METHOD = previous.method;
     if (previous.salt === undefined) delete process.env.SALT; else process.env.SALT = previous.salt;

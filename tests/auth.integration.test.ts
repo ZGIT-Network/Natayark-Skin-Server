@@ -207,7 +207,7 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       const response = await anonymous.request('/auth/oauth/complete', { ...registration,password:'OAuth-password-123',password_confirm:'OAuth-password-123' });
       assert.equal(response.statusCode, 302, response.body);
       const account = await queryOne<any>('SELECT uid, password FROM users WHERE email = ?', [oauthEmail]);
-      assert.ok(account); assert.ok(checkUserPassword(account,'OAuth-password-123'));
+      assert.ok(account); assert.ok(await checkUserPassword(account,'OAuth-password-123'));
       assert.equal((await queryOne<any>('SELECT user_id FROM mcn_oauth_identities WHERE provider = ? AND subject = ?', ['auth-test', remote.id]))?.user_id, account.uid);
       const connectionsCsrf = await anonymous.csrf('/user/connections');
       try {
@@ -241,7 +241,7 @@ test('isolated authentication: registration, OAuth, mailbox proof, reset and rev
       const verified = await anonymous.request('/auth/verify-email?token=' + mailToken);
       assert.equal(verified.statusCode, 302, verified.body);
       assert.equal((await queryOne<any>('SELECT verified FROM users WHERE email = ?', [oauthEmail]))?.verified, 1);
-      assert.ok(checkUserPassword((await queryOne<any>('SELECT * FROM users WHERE email=?',[oauthEmail]))!,'Mailbox-password-123'));
+      assert.ok(await checkUserPassword((await queryOne<any>('SELECT * FROM users WHERE email=?',[oauthEmail]))!,'Mailbox-password-123'));
       assert.equal((await anonymous.request('/auth/verify-email?token=' + mailToken)).statusCode, 400);
     });
     await t.test('passwordless legacy OAuth account links only with a verified provider email',async()=>{

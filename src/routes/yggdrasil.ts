@@ -90,7 +90,7 @@ export async function yggdrasilMetadata(): Promise<Record<string, any>> {
     meta: {
       serverName: await serverName(),
       implementationName: 'Natayark Skin Server',
-      implementationVersion: '1.1.2',
+      implementationVersion: '1.1.3',
       links: { homepage: await getOption('site_url', '/'), register: `${await getOption('site_url', '')}/auth/register` },
       'feature.non_email_login': !(await getOptionBool('ygg_disable_authserver', false)),
       'feature.openid_configuration_url': `${await issuer()}/.well-known/openid-configuration`,
@@ -123,7 +123,7 @@ async function loadUserForAuthentication(identification: string, password: strin
     const player = await findPlayerByName(identification);
     user = player ? await findUserByUid(player.uid) : null;
   }
-  if (!user || !checkUserPassword(user, password)) throw forbiddenOperation('Invalid credentials. Invalid username or password.');
+  if (!user || !await checkUserPassword(user, password)) throw forbiddenOperation('Invalid credentials. Invalid username or password.');
   if (user.permission === PERMISSION_BANNED) throw forbiddenOperation('The user has been banned');
   if ((await getOptionBool('require_verification', false)) && user.verified !== 1) {
     throw forbiddenOperation('The user has not been verified');
@@ -152,7 +152,7 @@ export async function registerYggdrasilRoutes(app: FastifyInstance): Promise<voi
   app.get('/api/yggdrasil/minecraftservices/publickeys', publicKeys);
 
   // --- Authserver --------------------------------------------------------
-  const passwordRateLimit = { config: { rateLimit: { max: 20, timeWindow: '1 minute', keyGenerator: (request: any) => String(request.body?.username ?? request.ip).toLowerCase() } } };
+  const passwordRateLimit = { config: { rateLimit: { hook: 'preHandler' as const, max: 20, timeWindow: '1 minute', keyGenerator: (request: any) => String(request.body?.username ?? request.ip).toLowerCase() } } };
   app.post('/api/yggdrasil/authserver/authenticate', passwordRateLimit, async (request, reply) => {
     const body = await requireJsonBody(request);
     const user = await loadUserForAuthentication(String(body.username ?? ''), String(body.password ?? ''));

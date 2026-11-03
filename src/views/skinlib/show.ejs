@@ -39,6 +39,7 @@
           <% } %>
         </div>
         <% } %>
+        <% if (isOwner || isAdmin) { %><p class="text-xs text-muted-foreground mt-3"><%= t('skinlib.private-note') %></p><% } %>
         <% if (allowDownload) { %><a class="btn btn-outline mt-3" href="/raw/<%= texture.tid %>" download="<%= texture.name %>.png"><%- icon('download') %><%= t('skinlib.download-texture') %></a><% } %>
         <% if ((isOwner || isAdmin) && texture.type !== 'cape') { %>
         <form data-action="texture-model" data-tid="<%= texture.tid %>" class="inline-form mt-4">
