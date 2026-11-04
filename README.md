@@ -4,6 +4,9 @@
 
 这是一个基于 Blessing Skin Server 设计理念独立开发的Minecraft皮肤站系统。
 
+> [!WARNING]
+> Natayark Skin Server is currently in a rapidly iterating development phase and cannot guarantee full compliance with production environment requirements. Please make sure to backup the data when making any modifications.
+
 ## 开始使用
 
 需要 Node.js 22 或更新版本，以及一个 MySQL 数据库。现有数据库兼容测试使用 MySQL 5.7.26，其他版本的实测情况见[兼容说明](docs/compatibility.md)。
