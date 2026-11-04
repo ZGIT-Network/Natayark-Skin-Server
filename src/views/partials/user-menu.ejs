@@ -1,7 +1,7 @@
 <%
   if (typeof t !== 'function') locals.t = function (key) { return key; };
 %>
-<div class="dropdown" data-dropdown data-user-menu>
+<div class="dropdown h-8" data-dropdown data-user-menu>
   <button type="button" class="btn btn-ghost btn-sm gap-2 px-1.5" data-dropdown-trigger aria-haspopup="menu" aria-expanded="false">
     <span class="avatar size-8">
       <img src="/avatar/user/<%= user.uid %>?v=5&size=64" alt="" width="64" height="64">

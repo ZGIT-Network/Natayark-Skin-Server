@@ -1262,10 +1262,14 @@
     background: rgba(9, 9, 11, 0.55);
   }
 
-  .sidebar-brand {
-    display: flex;
+  .sidebar-brand,
+  .topbar {
     height: 3.75rem;
     flex-shrink: 0;
+  }
+
+  .sidebar-brand {
+    display: flex;
     align-items: center;
     gap: 0.65rem;
     border-bottom: 1px solid var(--sidebar-border);
@@ -1345,7 +1349,6 @@
     top: 0;
     z-index: 50;
     display: flex;
-    height: 3.25rem;
     align-items: center;
     gap: 0.5rem;
     border-bottom: 1px solid var(--border);
