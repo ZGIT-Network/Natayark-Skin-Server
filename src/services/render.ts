@@ -404,7 +404,7 @@ export function renderCape(data: Buffer, height: number): RenderResult {
   const cape = parsePng(data);
   const hdRatio = cape.width / 64;
   const outHeight = Math.max(1, Math.round(height)), outWidth = Math.max(1, Math.round(outHeight / 16 * 10));
-  const scaled = resample(cape, outWidth, outHeight, 1 * hdRatio, 1 * hdRatio, cape.width * 10 / 64, cape.height * 16 / 32);
+  const scaled = resample(cape, outWidth, outHeight, 1 * hdRatio, 1 * hdRatio, cape.width * 10 / 64, cape.height * 16 / 32,true);
   const hp = 40, vp = 20;
   const canvas = new PNG({ width: hp * 2 + scaled.width, height: vp * 2 + scaled.height });
   for (let y = 0; y < scaled.height; y++) {
@@ -418,7 +418,7 @@ export function renderCape(data: Buffer, height: number): RenderResult {
   return { png: canvas, width: canvas.width, height: canvas.height };
 }
 
-function resample(src: PNG, w: number, h: number, sx0 = 0, sy0 = 0, sxW = src.width, sxH = src.height): PNG {
+function resample(src: PNG, w: number, h: number, sx0 = 0, sy0 = 0, sxW = src.width, sxH = src.height,nearest = false): PNG {
   const out = new PNG({ width: w, height: h });
   const rx = sxW / w, ry = sxH / h;
   const at = (x: number, y: number): RGBA => {
@@ -428,13 +428,28 @@ function resample(src: PNG, w: number, h: number, sx0 = 0, sy0 = 0, sxW = src.wi
   };
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const fx0 = sx0 + (x + 0.5) * rx - 0.5, fy0 = sy0 + (y + 0.5) * ry - 0.5;
-      const x0 = Math.floor(fx0), y0 = Math.floor(fy0), fx = fx0 - x0, fy = fy0 - y0;
-      const c00 = at(x0, y0), c10 = at(x0 + 1, y0), c01 = at(x0, y0 + 1), c11 = at(x0 + 1, y0 + 1);
-      const o = (y * w + x) * 4;
-      for (let c = 0; c < 4; c++) {
-        const top = c00[c] * (1 - fx) + c10[c] * fx, bottom = c01[c] * (1 - fx) + c11[c] * fx;
-        out.data[o + c] = Math.round(top * (1 - fy) + bottom * fy);
+			const o = (y * w + x) * 4;
+
+			if (nearest) {
+        // 最近邻
+        const sx = Math.min(src.width - 1, Math.max(0, Math.floor(sx0 + (x + 0.5) * rx)));
+        const sy = Math.min(src.height - 1, Math.max(0, Math.floor(sy0 + (y + 0.5) * ry)));
+        const si = (sy * src.width + sx) * 4;
+        out.data[o]     = src.data[si];
+        out.data[o + 1] = src.data[si + 1];
+        out.data[o + 2] = src.data[si + 2];
+        out.data[o + 3] = src.data[si + 3];
+
+      } else {
+        // 双线性
+        const fx0 = sx0 + (x + 0.5) * rx - 0.5, fy0 = sy0 + (y + 0.5) * ry - 0.5;
+        const x0 = Math.floor(fx0), y0 = Math.floor(fy0), fx = fx0 - x0, fy = fy0 - y0;
+        const c00 = at(x0, y0), c10 = at(x0 + 1, y0), c01 = at(x0, y0 + 1), c11 = at(x0 + 1, y0 + 1);
+        
+				for (let c = 0; c < 4; c++) {
+          const top = c00[c] * (1 - fx) + c10[c] * fx, bottom = c01[c] * (1 - fx) + c11[c] * fx;
+          out.data[o + c] = Math.round(top * (1 - fy) + bottom * fy);
+        }
       }
     }
   }
